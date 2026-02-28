@@ -1,0 +1,68 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an improvement.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        What problem does this feature solve? Describe the limitation or
+        pain point you are experiencing.
+      placeholder: "I'm trying to [...] but currently [...]"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        How do you think this should work? Include API examples if possible.
+      placeholder: |
+        ```javascript
+        // Example of how the feature would be used:
+        const result = doThing({ newOption: true });
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: |
+        What other approaches did you consider? Why is this approach better?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Feature Scope
+      description: Which part of this package does this affect?
+      options:
+        - API
+        - Core logic
+        - Configuration
+        - Types / TypeScript
+        - Testing
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context, examples from other tools, research references, etc.
+    validations:
+      required: false

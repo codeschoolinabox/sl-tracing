@@ -1,0 +1,15 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "readme": "README.md",
+  "router": "kind-dir",
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "githubPages": true,
+  "hideGenerator": true,
+  "lightHighlightTheme": "github-light",
+  "darkHighlightTheme": "github-dark"
+}
