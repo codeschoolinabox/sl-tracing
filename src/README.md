@@ -1,16 +1,23 @@
 # src/
 
-TODO: one paragraph — what does this package's source do?
+Source files for `@study-lenses/tracing`.
 
-## Structure
+## Root-Level Files
 
-| Module   | Purpose                                                         |
-| -------- | --------------------------------------------------------------- |
-| `utils/` | Pure utility functions (deep-clone, deep-freeze, deep-merge, …) |
-| TODO     | CHANGEME                                                        |
+| File         | Purpose                                                                            |
+| ------------ | ---------------------------------------------------------------------------------- |
+| `index.ts`   | Entry point — re-exports everything public                                         |
+| `tracing.ts` | `tracing()` sugar — validates TracerModule, returns 4 pre-bound wrappers           |
+| `types.ts`   | Domain types shared across layers (`TracerModule`, `StepCore`, `MetaConfig`, etc.) |
 
-## Conventions
+## Subdirectories
 
-- One default export per file; no barrel imports
-- Types in `types.ts` per module
-- Tests in `tests/` subdirectory
+| Directory                                 | Purpose                                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| [`api/`](./api/README.md)                 | Four API wrappers: `trace`, `tracify`, `embody`, `embodify`                   |
+| [`configuring/`](./configuring/README.md) | Pure config pipeline: shorthand expansion, default-filling, schema validation |
+| [`errors/`](./errors/README.md)           | `EmbodyError` base class + all specific error classes                         |
+| [`utils/`](./utils/README.md)             | Deep object utilities: clone, freeze, freeze-in-place, merge, equal           |
+| `tests/`                                  | Integration tests for `tracing.ts`                                            |
+
+See [DOCS.md](./DOCS.md) for layer stack architecture and cross-cutting decisions.

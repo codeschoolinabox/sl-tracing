@@ -17,17 +17,67 @@ Internal architecture, conventions, and implementation details for contributors.
 
 ## Architecture Overview
 
-> **Fill this in**: Describe the package's internal architecture for contributors.
->
-> Include:
->
-> - Core pipeline or data flow diagram
-> - Key layers and their responsibilities
-> - Technology stack (instrumentation libraries, parsers, etc.)
-> - Integration points with other packages
->
-> Architecture diagrams belong here (contributor-facing), not in public-facing API docs.
-> See root README.md for a higher-level overview.
+`@study-lenses/tracing` is a thin API wrapper layer. It validates the `TracerModule`
+contract and composes the four standard wrappers around `tracerModule.record()`. No
+instrumentation logic lives here — that belongs in `@study-lenses/trace-*` packages.
+
+### Pipeline
+
+```text
+tracing(tracerModule)                ← entry point (src/tracing.ts)
+  → validateTracerModule()           ← throws TracerInvalidError if contract violated
+  → returns { trace, tracify, embody, embodify }  ← all pre-bound to tracerModule
+
+Each wrapper call:
+  1. Validate args (type checks, required fields)       ← src/api/*
+  2. configuring/ pipeline:
+       a. validate config against tracerModule's optionsSchema + metaSchema (AJV)
+       b. expand shorthand booleans to full option objects
+       c. fill missing keys with defaults
+  3. tracerModule.record(code, resolvedConfig)          ← tracer-specific, external
+  4. Return steps[] or { ok, steps, ... }
+```
+
+### Layer Stack
+
+Layers are ordered bottom → top. Each layer can only import from layers below it.
+
+| Layer         | Path               | What it owns                                                                                             |
+| ------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `utils`       | `src/utils/`       | `deepClone`, `deepFreeze`, `deepMerge`, `deepEqual`, `isPlainObject` — pure, browser-compatible, no deps |
+| `errors`      | `src/errors/`      | `EmbodyError` base class; `TracerInvalidError`, `ArgumentInvalidError`, `ParseError`, etc.               |
+| `configuring` | `src/configuring/` | AJV-based schema validation, shorthand expansion, preset merging, default-filling                        |
+| `testing`     | `src/testing/`     | Reference `txt:chars` tracer + `metaSchema`; exported via `./testing` subpath only                       |
+| `api`         | `src/api/`         | `trace`, `tracify`, `embody`, `embodify`, `tracing()`                                                    |
+| `entry`       | `src/index.ts`     | Public exports: all API wrappers, all error classes, all public types                                    |
+
+**`testing` isolation rule**: Production layers (`entry`, `api`, `configuring`, `errors`,
+`utils`) must never import from `src/testing/`. The testing layer only flows outward via
+the `./testing` export subpath. Test files (in `tests/` subdirectories) are exempt from
+boundary checking and may import from `src/testing/` freely.
+
+### Technology Stack
+
+- **AJV** (`ajv`) — JSON Schema validation for `TracerModule` contract + config options
+- **TypeScript** — strict mode, no implicit any
+- No Aran, no Babel, no AST instrumentation — those live in tracer packages
+
+### Integration with Tracer Packages
+
+Tracer packages (`@study-lenses/trace-*`) depend on this package and call `tracing()`:
+
+```typescript
+// src/index.ts of a tracer package — pure boilerplate, dev never touches this
+import tracing from '@study-lenses/tracing';
+import tracerModule from './tracer-module.js';
+
+const { trace, tracify, embody, embodify } = tracing(tracerModule);
+
+export default trace;
+export { trace, tracify, embody, embodify, tracerModule };
+```
+
+The tracer developer only writes `record.ts` (the `record()` function) and `types.ts`.
 
 ## Codebase Conventions
 
@@ -379,7 +429,7 @@ function processConfig({ preset = 'detailed', variables = true }) {}
 
 ### 10. Naming
 
-**Functions: verb first**
+#### Functions: verb first
 
 ```javascript
 // ✅ CORRECT
@@ -680,26 +730,20 @@ for all files and directories. Match filename to export: `createConfig` → `cre
 
 ### Directory Documentation Convention
 
-Every source directory under `src/` has a `README.md`. Directories with non-obvious
-architecture or key design decisions also have a `DOCS.md`:
+Every source directory under `src/` has a `README.md`:
 
-| Content                                              | Where                        | Audience     |
-| ---------------------------------------------------- | ---------------------------- | ------------ |
-| API reference (signatures, params, returns, throws)  | JSDoc/TSDoc → `docs/`        | Consumers    |
-| Consumer-facing "why" context                        | TSDoc `@remarks` → `docs/`   | Consumers    |
-| What this module does, how to navigate it            | `README.md` per directory    | Contributors |
-| Architecture, design decisions, why this approach    | `DOCS.md` per directory      | Developers   |
-| Non-obvious implementation detail                    | Inline `//` comment          | Code readers |
+| Content                                 | Where               | Audience     |
+| --------------------------------------- | ------------------- | ------------ |
+| What this directory does, why it exists | `README.md`         | Contributors |
+| Key files and their responsibilities    | `README.md`         | Contributors |
+| API reference (auto-generated)          | `docs/` via TypeDoc | Consumers    |
 
 **Rules:**
 
 - Every directory has a `README.md` (brief — 5–15 lines is typical)
-- Directories with non-obvious architecture or key design decisions also have a `DOCS.md`
-- `DOCS.md` captures the "why" — tradeoffs, alternatives considered, constraints. Keep it short.
-  It is NOT an API reference — JSDoc handles that. Hand-maintained: fix it or delete it if it goes stale.
+- No `DOCS.md` files anywhere — they go stale. Use JSDoc/TSDoc in source; TypeDoc generates `docs/`
 - Tests directories (`tests/`) are exempt from needing `README.md`
 - `README.md` is cross-referenced: parent links down, child links up, siblings link to each other
-- Public functions have JSDoc/TSDoc in source; TypeDoc generates `docs/` (gitignored, CI-only)
 
 **Public function documentation:**
 
@@ -1123,57 +1167,38 @@ how to fix.
 Import boundaries are enforced via `eslint-plugin-boundaries`. This catches architectural
 violations at lint time.
 
-### Template: Two Layers (`utils` + `src`)
+### This Package: Six Layers
 
-The template ships with two layers: a pure utility layer (`src/utils/**`) and a general
-source layer (`src/**`). Utils can only import from other utils; everything else can import
-from both.
-
-```javascript
-// eslint.config.js — current template setup
-'boundaries/elements': [
-  // utils listed first — src/utils/** matches 'utils' before the broader 'src' catch-all
-  { type: 'utils', pattern: 'src/utils/**', mode: 'file' },
-  { type: 'src',   pattern: 'src/**',       mode: 'file' },
-],
-'boundaries/element-types': [
-  'error',
-  {
-    default: 'disallow',
-    rules: [
-      { from: 'src',   allow: ['src', 'utils'] },
-      { from: 'utils', allow: ['utils'] },
-    ],
-  },
-],
-```
-
-### Expanding for Your Package
-
-When your package grows internal layers (e.g., `api/`, `configuring/`, `errors/`), expand
-the elements and add `element-types` rules:
+`@study-lenses/tracing` expands the generic two-layer template to a six-element stack.
+Narrower patterns are listed first so each file matches the most specific element.
 
 ```javascript
-// Example: two-layer package
+// eslint.config.js — current setup
 'boundaries/elements': [
-  { type: 'entry', pattern: 'src/index.ts', mode: 'file' },
-  { type: 'core',  pattern: 'src/core/*',   mode: 'file' },
-  { type: 'utils', pattern: 'src/utils/*',  mode: 'file' },
-  { type: 'error', pattern: 'src/errors/*', mode: 'file' },
+  { type: 'utils',       pattern: 'src/utils/**',      mode: 'file' },
+  { type: 'errors',      pattern: 'src/errors/**',     mode: 'file' },
+  { type: 'configuring', pattern: 'src/configuring/**', mode: 'file' },
+  { type: 'testing',     pattern: 'src/testing/**',    mode: 'file' },
+  { type: 'api',         pattern: 'src/api/**',        mode: 'file' },
+  { type: 'entry',       pattern: 'src/index.ts',      mode: 'file' },
 ],
-// In rules:
 'boundaries/element-types': ['error', {
   default: 'disallow',
   rules: [
-    { from: 'entry', allow: ['core'] },
-    { from: 'core',  allow: ['utils', 'error'] },
-    { from: 'utils', allow: ['utils'] },
-    { from: 'error', allow: [] },
+    { from: 'entry',       allow: ['api', 'configuring', 'errors', 'utils'] },
+    { from: 'api',         allow: ['configuring', 'errors', 'utils'] },
+    { from: 'configuring', allow: ['errors', 'utils'] },
+    { from: 'errors',      allow: [] },
+    { from: 'utils',       allow: ['utils'] },
+    { from: 'testing',     allow: ['configuring', 'errors', 'utils'] },
   ],
 }],
 ```
 
-See embody's `eslint.config.js` for a full multi-layer example.
+**`testing` isolation**: `testing` is absent from all production layers' `allow` lists. It
+only flows outward via the `./testing` export subpath. Test files in `tests/` subdirectories
+are excluded from boundary checks via `'boundaries/ignore': ['**/tests/**/*.ts']` and may
+import from `src/testing/` freely.
 
 ### Updating Boundaries
 

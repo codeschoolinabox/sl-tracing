@@ -49,22 +49,33 @@ export default tseslint.config(
         },
       },
       // --- Module boundaries ---
-      // utils is listed first — src/utils/** matches 'utils' before the broader 'src' catch-all
+      // Narrower patterns listed first — each file matches the FIRST element whose pattern fits.
+      // e.g. src/utils/deep-clone.ts → 'utils' (not 'api' or 'entry')
       'boundaries/ignore': ['**/tests/**/*.ts'],
       'boundaries/elements': [
         { type: 'utils', pattern: 'src/utils/**', mode: 'file' },
-        { type: 'src', pattern: 'src/**', mode: 'file' },
+        { type: 'errors', pattern: 'src/errors/**', mode: 'file' },
+        { type: 'configuring', pattern: 'src/configuring/**', mode: 'file' },
+        { type: 'api', pattern: 'src/api/**', mode: 'file' },
+        { type: 'types', pattern: 'src/types.ts', mode: 'file' },
+        { type: 'tracing', pattern: 'src/tracing.ts', mode: 'file' },
+        { type: 'entry', pattern: 'src/index.ts', mode: 'file' },
       ],
     },
     rules: {
       // --- Module boundaries ---
-      // utils → utils only; src → src + utils. Expand both elements and rules per package.
+      // Layer stack (bottom to top): utils → errors → configuring → api → tracing → entry
+      // Test files (in tests/ subdirs) are excluded via boundaries/ignore above
       'boundaries/element-types': [
         'error',
         {
           default: 'disallow',
           rules: [
-            { from: 'src', allow: ['src', 'utils'] },
+            { from: 'entry', allow: ['tracing', 'api', 'configuring', 'errors', 'types', 'utils'] },
+            { from: 'tracing', allow: ['api', 'configuring', 'errors', 'types', 'utils'] },
+            { from: 'api', allow: ['configuring', 'errors', 'types', 'utils'] },
+            { from: 'configuring', allow: ['errors', 'utils'] },
+            { from: 'errors', allow: ['types'] },
             { from: 'utils', allow: ['utils'] },
           ],
         },
@@ -73,7 +84,10 @@ export default tseslint.config(
       'boundaries/no-unknown-files': ['error'],
 
       // --- TypeScript ---
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       // `any` types: Warn during development, review in PR
@@ -242,6 +256,12 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
   },
 
+  // --- Root-level TS config files (no TS project, disable type-checked rules) ---
+  {
+    files: ['*.config.ts'],
+    ...tseslint.configs.disableTypeChecked,
+  },
+
   // --- Public API (named exports allowed) ---
   {
     files: ['src/index.ts'],
@@ -280,6 +300,7 @@ export default tseslint.config(
       'functional/prefer-readonly-type': 'off',
       'arrow-body-style': 'off', // Test callbacks use standard arrow pattern
       'sonarjs/no-duplicate-string': 'off', // Tests repeat literals for readability
+      'sonarjs/no-unused-vars': 'off', // Covered by @typescript-eslint/no-unused-vars with varsIgnorePattern
       'unicorn/consistent-function-scoping': 'off', // Arrow callbacks are idiomatic in tests
       // Test fixtures are often loosely typed — strict safety checks not needed
       '@typescript-eslint/no-unsafe-call': 'off',

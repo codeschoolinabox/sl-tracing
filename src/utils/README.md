@@ -22,8 +22,11 @@ const cloned = deepClone(original);
 
 ### deep-freeze
 
-Recursively freezes a deep copy of an object. Unlike `Object.freeze` which is shallow and
-mutates in-place, this creates a clone and freezes the clone — the original is untouched.
+Recursively freezes a **deep copy** of an object. Unlike `Object.freeze` which is shallow
+and mutates in-place, this creates a clone and freezes the clone — the original is untouched.
+
+**Do not use on objects containing functions.** `deepClone` serializes functions to plain
+objects. Use `deepFreezeInPlace` for objects that contain functions.
 
 ```typescript
 import deepFreeze from './deep-freeze.js';
@@ -33,6 +36,23 @@ const frozen = deepFreeze(original);
 
 original.nested.value = 2; // still works — original not frozen
 frozen.nested.value = 3; // TypeError in strict mode
+```
+
+### deep-freeze-in-place
+
+Recursively freezes an object **in place** — no clone. Returns the same reference.
+Use when you just built the object and own it.
+
+**Do not use on chain objects** (`TracifyChain`, `EmbodifyChain`). Their getter side
+effects fire during `Object.values()` traversal and throw when required state is missing.
+
+```typescript
+import deepFreezeInPlace from './deep-freeze-in-place.js';
+
+const obj = { nested: { value: 1 } };
+const frozen = deepFreezeInPlace(obj);
+frozen === obj; // true — same reference
+frozen.nested.value = 2; // TypeError in strict mode
 ```
 
 ### deep-freeze-in-place
@@ -54,8 +74,8 @@ Contrast with `deepFreeze` which clones first (for objects you don't own).
 
 ### deep-merge
 
-Recursively merges two objects with the second (user) taking precedence. Arrays are replaced
-completely — no element-by-element merging.
+Recursively merges two objects with the second (user) taking precedence. Arrays are
+replaced completely — no element-by-element merging.
 
 ```typescript
 import deepMerge from './deep-merge.js';
@@ -68,8 +88,8 @@ const result = deepMerge(preset, user);
 
 ### deep-equal
 
-Recursively compares two values for structural equality. Handles the same type universe as
-`deepClone`: primitives, Date, RegExp, Array, Set, Map, and plain objects.
+Recursively compares two values for structural equality. Handles the same type universe
+as `deepClone`: primitives, Date, RegExp, Array, Set, Map, and plain objects.
 
 ```typescript
 import deepEqual from './deep-equal.js';
@@ -82,8 +102,8 @@ deepEqual([1, 2], [1, 2, 3]); // false
 ### is-plain-object
 
 Predicate that returns true only for `{}` literals and `Object.create(Object.prototype)`.
-Class instances (Date, RegExp, Set, Map, custom classes) and `Object.create(null)` are not
-plain objects.
+Class instances (Date, RegExp, Set, Map, custom classes) and `Object.create(null)` are
+not plain objects.
 
 ```typescript
 import isPlainObject from './is-plain-object.js';
@@ -105,5 +125,10 @@ object types before attempting recursive structural operations.
   reference escapes
 - **Browser-compatible**: No `structuredClone` — works in all modern browsers
 - **Type-preserving**: Generics maintain TypeScript types through operations
-- **Circular reference safety**: `deepClone` detects cycles; `deepEqual` tracks visited
-  pairs to handle circular references in distinct objects
+- **Circular reference safety**: `deepClone` detects cycles; `deepEqual` short-circuits
+  on same-reference self-referential objects
+
+## Freeze Utility Ownership
+
+See [DOCS.md](./DOCS.md) for the full ownership model — when to use `deepFreeze` vs
+`deepFreezeInPlace` vs shallow `Object.freeze`, with application table.

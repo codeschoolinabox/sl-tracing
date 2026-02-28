@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "max": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null,
+          "description": "Maximum trace steps (null = unlimited)"
+        },
+        "iterations": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null,
+          "description": "Maximum loop iterations (null = unlimited)"
+        },
+        "callstack": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null,
+          "description": "Maximum call stack depth (null = unlimited)"
+        },
+        "time": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null,
+          "description": "Maximum execution time in milliseconds (null = unlimited)"
+        }
+      },
+      "default": {
+        "steps": null,
+        "iterations": null,
+        "callstack": null,
+        "time": null
+      },
+      "additionalProperties": false
+    },
+    "range": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ],
+      "default": null,
+      "description": "Line range to trace [start, end] (null = full code)"
+    },
+    "timestamps": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include timestamps in trace steps"
+    },
+    "debug": {
+      "type": "object",
+      "properties": {
+        "ast": {
+          "type": "boolean",
+          "default": false,
+          "description": "Attach AST nodes to trace steps"
+        }
+      },
+      "default": { "ast": false },
+      "additionalProperties": false
+    }
+  },
+  "default": {},
+  "additionalProperties": false
+}
