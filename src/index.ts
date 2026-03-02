@@ -44,6 +44,7 @@ export { default as OptionsSemanticInvalidError } from './errors/options-semanti
 export { default as LimitExceededError } from './errors/limit-exceeded-error.js';
 export { default as ParseError } from './errors/parse-error.js';
 export { default as RuntimeError } from './errors/runtime-error.js';
+export { default as StepsInvalidError } from './errors/steps-invalid-error.js';
 export { default as InternalError } from './errors/internal-error.js';
 
 // ============================================================================

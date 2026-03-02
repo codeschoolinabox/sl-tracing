@@ -1,6 +1,7 @@
 import ParseError from '../../errors/parse-error.js';
+import StepsInvalidError from '../../errors/steps-invalid-error.js';
 import TracerInvalidError from '../../errors/tracer-invalid-error.js';
-import type { TracerModule } from '../../types.js';
+import type { StepCore, TracerModule } from '../../types.js';
 import tracify from '../tracify.js';
 
 import txtCharsTracer from './txt-chars/index.js';
@@ -100,6 +101,19 @@ describe('tracify', () => {
 
     it('.steps throws when code missing', () => {
       expect(() => tracify.tracer(txtCharsTracer).steps).toThrow(/code.*required/i);
+    });
+
+    it('.steps rejects with StepsInvalidError for invalid tracer output (async)', async () => {
+      const badTracer: TracerModule = {
+        id: 'test:bad-steps',
+        langs: [],
+        record: () =>
+          Promise.resolve([{ step: 0, loc: 'bad' }] as unknown as readonly StepCore[]),
+      };
+
+      await expect(tracify.tracer(badTracer).code('hello').steps).rejects.toBeInstanceOf(
+        StepsInvalidError,
+      );
     });
 
     it('.steps rejects with ParseError from tracer module (async)', async () => {

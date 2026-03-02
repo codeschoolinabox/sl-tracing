@@ -15,6 +15,7 @@ Error (built-in)
         ├── ParseError                   (tracer's record — loc: SourceLoc)
         ├── RuntimeError                 (tracer's record — loc?: SourceLoc)
         ├── LimitExceededError           (tracer's record — limit, actual)
+        ├── StepsInvalidError            (post-processing — aggregate: violations[])
         └── InternalError                (any layer — cause?: Error)
 ```
 
@@ -29,6 +30,7 @@ Error (built-in)
 | `ParseError`                  | Tracer's `record`        | Code cannot be parsed                    |
 | `RuntimeError`                | Tracer's `record`        | Execution fails during tracing           |
 | `LimitExceededError`          | Tracer's `record`        | Execution limit exceeded                 |
+| `StepsInvalidError`           | Post-processing          | Tracer output violates StepCore contract |
 | `InternalError`               | Any layer                | Unexpected internal error                |
 
 ## Quick Start
@@ -71,6 +73,7 @@ src/errors/
   parse-error.ts                     # tracer: parse failed
   runtime-error.ts                   # tracer: execution failed
   limit-exceeded-error.ts            # tracer: limit exceeded
+  steps-invalid-error.ts             # post-processing: aggregate step violations
   internal-error.ts                  # any: unexpected error
   tests/
     tracer-invalid-error.test.ts

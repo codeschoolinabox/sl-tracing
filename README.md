@@ -185,26 +185,47 @@ decide whether to keep or clear code when switching tracers.
 
 ## Architecture
 
-```text
-tracing(tracerModule)
-  → validateTracerModule()                     // TracerInvalidError if contract violated
-  → Object.freeze({ trace, tracify, embody, embodify })
+The wrapper pipeline has three phases: **VALIDATION** (synchronous) → **EXECUTION** (asynchronous) → **POST-PROCESSING** (synchronous). The diagram shows `trace` — the other wrappers (`tracify`, `embody`, `embodify`) follow the same pipeline with different access patterns and error handling.
 
-trace(code, config?)  [and other wrappers]
-  → prepareConfig(meta, metaSchema)            // /configuring — expand + fill + validate
-  → prepareConfig(options, optionsSchema)      // /configuring — same pipeline
-  → tracerModule.verifyOptions?(options)       // tracer's semantic validator
-  → tracerModule.record(code, { meta, options }) // tracer-specific execution
-  → readonly StepCore[]
+```mermaid
+flowchart TB
+    consumer1["<b>CONSUMER PROGRAM</b><br/>(educational tool)<br/><br/>calls trace(tracer, code, config?)"]
+
+    consumer1 -- "code + config" --> validation
+
+    subgraph wrapper ["@study-lenses/tracing — API WRAPPER"]
+        direction TB
+        validation["<b>VALIDATE CONFIG</b> · sync<br/>expand shorthand, fill defaults,<br/>schema + semantic validation"]
+        execution["<b>EXECUTE TRACER</b> · async<br/>call record() with code +<br/>fully resolved frozen config"]
+        postprocessing["<b>VALIDATE + FREEZE STEPS</b> · sync<br/>check StepCore conformity,<br/>deep-freeze for consumer"]
+
+        validation --> execution --> postprocessing
+    end
+
+    postprocessing -- "frozen steps" --> consumer2
+    consumer2["<b>CONSUMER PROGRAM</b><br/>(receives frozen steps)"]
+
+    subgraph tracermod ["YOUR TRACER MODULE  ★ = you implement this"]
+        direction TB
+        fields["<b>★ id</b> · unique identifier<br/><b>★ langs</b> · supported extensions<br/><b>★ optionsSchema</b> · JSON Schema (optional)<br/><b>★ verifyOptions</b> · semantic checks (optional)<br/><b>★ record</b> · instruments + executes code"]
+    end
+
+    tracermod -. "schema + verify" .-> validation
+    tracermod -. "record()" .-> execution
+
+    style wrapper fill:none,stroke:#333,stroke-width:3px
+    style tracermod fill:#fff8e1,stroke:#f9a825,stroke-width:2px
+    style consumer1 fill:#e3f2fd,stroke:#1565c0
+    style consumer2 fill:#e3f2fd,stroke:#1565c0
 ```
 
 Layer stack (bottom → top, each layer imports only from below):
 
 ```text
 src/utils/       ← deep-clone, deep-freeze, deep-freeze-in-place, deep-merge, deep-equal
-src/errors/      ← EmbodyError base + 8 specific error classes
+src/errors/      ← EmbodyError base + 9 specific error classes
 src/configuring/ ← pure config pipeline (schema-agnostic, tracer-agnostic)
-src/api/         ← trace, tracify, embody, embodify
+src/api/         ← trace, tracify, embody, embodify + validate-steps, validate-tracer-module
 src/tracing.ts   ← tracing() sugar (validates TracerModule, returns pre-bound wrappers)
 src/index.ts     ← entry point (re-exports everything public)
 ```

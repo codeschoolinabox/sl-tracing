@@ -51,18 +51,28 @@ if (chain.ok) console.log(chain.steps);
 | Partial application — reuse same code    | `embody`   | Closure caches provided fields               |
 | Inspect state before tracing             | `embodify` | Lazy `.resolvedConfig`, sync getters         |
 
-## Config Flow
+## Pipeline
+
+Three phases per trace call:
 
 ```text
-User config (partial)
+VALIDATION (synchronous)
   → prepareConfig(meta, metaSchema)        ← /configuring
-  → prepareConfig(options, optionsSchema)  ← /configuring
-  → tracerModule.verifyOptions?(options)   ← tracer's semantic validator
-  → tracerModule.record(code, { meta, options })
+  → prepareConfig(options, optionsSchema)  ← /configuring (skipped if no optionsSchema)
+  → deepFreezeInPlace({ meta, options })   ← immutable resolved config
+  → tracerModule.verifyOptions?(options)   ← tracer's semantic validator (skipped if absent)
+
+EXECUTION (asynchronous)
+  → tracerModule.record(code, resolvedConfig)
+
+POST-PROCESSING (synchronous)
+  → validateSteps(steps)                   ← StepsInvalidError if output violates StepCore
+  → deepFreeze(steps)                      ← immutable consumer access
   → readonly StepCore[]
 ```
 
-Tracers receive fully-filled, validated config — never partial, never invalid types.
+Tracers receive fully-filled, validated, frozen config — never partial, never invalid types.
+Tracer output is validated and frozen before consumers receive it.
 
 ## File Structure
 
@@ -73,6 +83,7 @@ src/api/
   embody.ts                 # Keyed, safe: { code, config } → Promise<EmbodyResult>
   embodify.ts               # Chainable safe: .set().trace() → Promise<EmbodifyChain>
   validate-tracer-module.ts # API input guard — validates TracerModule, throws TracerInvalidError
+  validate-steps.ts         # API output guard — validates record() output, throws StepsInvalidError
   types.ts                  # Wrapper-specific types: EmbodyResult, TracifyChain, EmbodifyChain, etc.
   tests/
     trace.test.ts
@@ -80,6 +91,7 @@ src/api/
     embody.test.ts
     embodify.test.ts
     validate-tracer-module.test.ts  # validateTracerModule tests
+    validate-steps.test.ts          # validateSteps tests
     reverse.ts       # Test fixture: universal tracer (langs: [])
     reverse-txt.ts   # Test fixture: txt-only tracer (langs: ['txt'])
     txt-chars/       # Reference tracer fixture (txt:chars implementation)

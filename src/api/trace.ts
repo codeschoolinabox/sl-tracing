@@ -16,6 +16,7 @@ import type { MetaConfig, StepCore, TracerModule } from '../types.js';
 import deepFreezeInPlace from '../utils/deep-freeze-in-place.js';
 import deepFreeze from '../utils/deep-freeze.js';
 
+import validateSteps from './validate-steps.js';
 import validateTracerModule from './validate-tracer-module.js';
 
 /**
@@ -125,8 +126,11 @@ function traceWith(
   // 5. Semantic validation (sync) — only if tracer exports verifyOptions
   tracerModule.verifyOptions?.(resolvedConfig.options);
 
-  // 6. Record (async) — clone+freeze tracer output (tracer owns those step objects)
-  return tracerModule.record(code, resolvedConfig).then(deepFreeze);
+  // 6. Record (async) — validate steps conformity, then clone+freeze (tracer owns those step objects)
+  return tracerModule
+    .record(code, resolvedConfig)
+    .then((steps) => (validateSteps(steps), steps))
+    .then(deepFreeze);
 }
 
 export default trace;

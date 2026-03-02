@@ -29,6 +29,7 @@ import deepFreezeInPlace from '../utils/deep-freeze-in-place.js';
 import deepFreeze from '../utils/deep-freeze.js';
 
 import type { EmbodyClosure, EmbodyInput, EmbodyResult } from './types.js';
+import validateSteps from './validate-steps.js';
 import validateTracerModule from './validate-tracer-module.js';
 
 /**
@@ -65,8 +66,10 @@ async function executeTrace(
     // 3. Semantic validation
     tracer.verifyOptions?.(resolvedConfig.options);
 
-    // 4. Record — deepFreeze: clone+freeze tracer output (tracer owns those step objects)
-    const steps = deepFreeze(await tracer.record(code, resolvedConfig));
+    // 4. Record — validate conformity, then clone+freeze (tracer owns those step objects)
+    const rawSteps = await tracer.record(code, resolvedConfig);
+    validateSteps(rawSteps);
+    const steps = deepFreeze(rawSteps);
 
     // deepFreezeInPlace: we just built this result wrapper — freeze in place
     return deepFreezeInPlace({

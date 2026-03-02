@@ -1,6 +1,7 @@
 import OptionsSemanticInvalidError from '../../errors/options-semantic-invalid-error.js';
+import StepsInvalidError from '../../errors/steps-invalid-error.js';
 import TracerInvalidError from '../../errors/tracer-invalid-error.js';
-import type { TracerModule } from '../../types.js';
+import type { StepCore, TracerModule } from '../../types.js';
 import trace from '../trace.js';
 
 import txtCharsTracer from './txt-chars/index.js';
@@ -66,6 +67,27 @@ describe('trace', () => {
 
       // rl direction reverses: c, b, a
       expect(steps.map((s) => (s as { char: string }).char)).toEqual(['c', 'b', 'a']);
+    });
+  });
+
+  describe('steps validation (post-processing, async)', () => {
+    it('rejects invalid steps from record()', async () => {
+      const badTracer: TracerModule = {
+        id: 'test:bad-steps',
+        langs: [],
+        record: () =>
+          Promise.resolve([
+            { step: 0, loc: 'bad' },
+          ] as unknown as readonly StepCore[]),
+      };
+
+      await expect(trace(badTracer, 'hello')).rejects.toThrow(StepsInvalidError);
+    });
+
+    it('existing txt:chars tracer passes validation', async () => {
+      const steps = await trace(txtCharsTracer, 'ab');
+
+      expect(steps).toHaveLength(2);
     });
   });
 

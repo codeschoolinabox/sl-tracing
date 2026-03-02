@@ -83,10 +83,14 @@ validateTracerModule(tracerModule)   ← at tracing() call — TracerInvalidErro
 ├── ArgumentInvalidError             ← sync, on each wrapper call (wrong arg types)
 │
 └── at .steps / .trace() / completing embody() call:
-      prepareConfig(meta, metaSchema)      → OptionsInvalidError
-      prepareConfig(options, schema)       → OptionsInvalidError
-      tracerModule.verifyOptions?(options) → OptionsSemanticInvalidError
-      tracerModule.record(code, config)    → ParseError | RuntimeError | LimitExceededError
+      VALIDATION (sync):
+        prepareConfig(meta, metaSchema)      → OptionsInvalidError
+        prepareConfig(options, schema)       → OptionsInvalidError
+        tracerModule.verifyOptions?(options) → OptionsSemanticInvalidError
+      EXECUTION (async):
+        tracerModule.record(code, config)    → ParseError | RuntimeError | LimitExceededError
+      POST-PROCESSING (sync):
+        validateSteps(steps)                 → StepsInvalidError
 ```
 
 **Why validate tracer at `tracing()` and not lazily?** The tracer contract is checked once,
@@ -105,6 +109,16 @@ error _classes_ only. `validateTracerModule` is validation _logic_ that happens 
 of those classes — a different concern. All four API wrappers call it at their entry points,
 making `api/` its natural home.
 
+**Why validate steps after `record()`?** The wrapper has a trust boundary at `record()`.
+Before it, the wrapper controls all data (type-checked args, validated config). After it,
+the wrapper receives whatever the tracer produces. Validating before freezing catches tracer
+bugs early — a clear `StepsInvalidError` is better than a cryptic `TypeError` downstream
+when consumer code tries to access `step.loc.start.line` on malformed output.
+
+**Why does `validate-steps.ts` also live in `api/`?** Same reasoning as
+`validate-tracer-module.ts` — validation logic, not error class. Both functions are called
+by all four wrappers: one at entry (input guard), one after record (output guard).
+
 ---
 
 ## Error Ownership
@@ -118,6 +132,7 @@ making `api/` its natural home.
 | `ParseError`                  | Tracer's `record()`        | Code cannot be parsed                    |
 | `RuntimeError`                | Tracer's `record()`        | Execution fails during tracing           |
 | `LimitExceededError`          | Tracer's `record()`        | Execution limit exceeded                 |
+| `StepsInvalidError`           | Post-processing            | Tracer output violates StepCore contract |
 
 ---
 

@@ -61,6 +61,34 @@ The only failure mode is a malformed `TracerModule` object, which `TracerInvalid
 
 ---
 
+## `StepsInvalidError` — Aggregate Design
+
+`StepsInvalidError` collects all `StepCore` contract violations from tracer output before
+throwing. Same aggregate pattern as `TracerInvalidError` — one throw, complete feedback:
+
+```typescript
+throw new StepsInvalidError([
+  'steps[0].step: expected 1 (1-indexed), got 0',
+  'steps[1].loc.start: expected object with line and column',
+]);
+```
+
+**Why aggregate?** Same reasoning as `TracerInvalidError`: tracer developers see all output
+problems at once instead of fixing one and re-running. Both errors target the same audience
+(tracer package authors) at the same development phase (implementation/debugging).
+
+**Why dev-time tier?** Invalid steps are always a bug in the tracer's `record()` function,
+never caused by user input. The user's code and config were already validated before
+`record()` was called. If `record()` returns non-conforming output, the tracer is broken.
+
+**Why validate after `record()`?** The wrapper has a trust boundary at `record()` — tracer
+output is external code. Before `record()`, the wrapper controls all data (validated config,
+type-checked args). After `record()`, the wrapper receives whatever the tracer produces.
+Validating before freezing catches tracer bugs early, with a clear error pointing at the
+tracer's output rather than a cryptic `TypeError` downstream in consumer code.
+
+---
+
 ## Error Ownership Table
 
 | Error                         | Tier        | Consumer Action                         |
@@ -72,12 +100,13 @@ The only failure mode is a malformed `TracerModule` object, which `TracerInvalid
 | `ParseError`                  | User-facing | Show location, highlight line           |
 | `RuntimeError`                | User-facing | Show execution error                    |
 | `LimitExceededError`          | User-facing | Prompt to raise limits or simplify code |
+| `StepsInvalidError`           | Dev-time    | Fix record() — not user-facing          |
 | `InternalError`               | Bug         | Report to maintainers                   |
 
 **Two error tiers:**
 
-- **Dev-time errors** (`TracerInvalidError`, `ArgumentInvalidError`): Indicate bugs in
-  tool/tracer code, not user input. No need to surface to end users.
+- **Dev-time errors** (`TracerInvalidError`, `ArgumentInvalidError`, `StepsInvalidError`):
+  Indicate bugs in tool/tracer code, not user input. No need to surface to end users.
 - **User-facing errors** (everything else): Indicate problems with user-provided code or
   configuration. Surface the message and location to the user.
 

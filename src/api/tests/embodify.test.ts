@@ -1,5 +1,6 @@
 import EmbodyError from '../../errors/embody-error.js';
-import type { TracerModule } from '../../types.js';
+import StepsInvalidError from '../../errors/steps-invalid-error.js';
+import type { StepCore, TracerModule } from '../../types.js';
 import embodify from '../embodify.js';
 
 import reverseTracer from './reverse.js';
@@ -111,6 +112,19 @@ describe('embodify', () => {
 
       expect(Array.isArray(traced.steps)).toBe(true);
       expect(traced.steps).toHaveLength(2);
+    });
+
+    it('after failed trace with invalid steps .error is StepsInvalidError', async () => {
+      const badTracer: TracerModule = {
+        id: 'test:bad-steps',
+        langs: [],
+        record: () =>
+          Promise.resolve([{ step: 0, loc: 'bad' }] as unknown as readonly StepCore[]),
+      };
+      const traced = await embodify({ tracer: badTracer, code: 'x' }).trace();
+
+      expect(traced.ok).toBe(false);
+      expect(traced.error).toBeInstanceOf(StepsInvalidError);
     });
 
     it('after failed trace .error contains EmbodyError', async () => {

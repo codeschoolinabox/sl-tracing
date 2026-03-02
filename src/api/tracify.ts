@@ -25,6 +25,7 @@ import deepFreezeInPlace from '../utils/deep-freeze-in-place.js';
 import deepFreeze from '../utils/deep-freeze.js';
 
 import type { TracifyChain } from './types.js';
+import validateSteps from './validate-steps.js';
 import validateTracerModule from './validate-tracer-module.js';
 
 /**
@@ -150,8 +151,11 @@ function tracifyChain(state: TracifyState = {}): TracifyChain {
       }
 
       state.tracer.verifyOptions?.(cachedResolvedConfig.options);
-      // deepFreeze: clone+freeze tracer output — tracer owns those step objects
-      cachedSteps = state.tracer.record(state.code, cachedResolvedConfig).then(deepFreeze);
+      // Validate steps conformity, then clone+freeze — tracer owns those step objects
+      cachedSteps = state.tracer
+        .record(state.code, cachedResolvedConfig)
+        .then((steps) => (validateSteps(steps), steps))
+        .then(deepFreeze);
       return cachedSteps;
     },
 

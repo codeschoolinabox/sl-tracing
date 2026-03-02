@@ -1,7 +1,8 @@
 import OptionsInvalidError from '../../errors/options-invalid-error.js';
 import ParseError from '../../errors/parse-error.js';
+import StepsInvalidError from '../../errors/steps-invalid-error.js';
 import TracerInvalidError from '../../errors/tracer-invalid-error.js';
-import type { TracerModule } from '../../types.js';
+import type { StepCore, TracerModule } from '../../types.js';
 import embody from '../embody.js';
 
 import txtCharsTracer from './txt-chars/index.js';
@@ -237,6 +238,21 @@ describe('embody', () => {
       if (!result.ok) {
         expect(result.error.message).toContain('interrobang');
         expect((result.error as ParseError).loc).toEqual({ line: 1, column: 0 });
+      }
+    });
+
+    it('catches StepsInvalidError from invalid tracer output (async)', async () => {
+      const badTracer: TracerModule = {
+        id: 'test:bad-steps',
+        langs: [],
+        record: () =>
+          Promise.resolve([{ step: 0, loc: 'bad' }] as unknown as readonly StepCore[]),
+      };
+      const result = await embody({ tracer: badTracer, code: 'x', config: {} });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(StepsInvalidError);
       }
     });
 

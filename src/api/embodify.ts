@@ -26,6 +26,7 @@ import deepFreezeInPlace from '../utils/deep-freeze-in-place.js';
 import deepFreeze from '../utils/deep-freeze.js';
 
 import type { EmbodifyChain, EmbodifyInput, TraceMethodInput } from './types.js';
+import validateSteps from './validate-steps.js';
 import validateTracerModule from './validate-tracer-module.js';
 
 /**
@@ -200,8 +201,10 @@ function embodifyChain(state: EmbodifyState): EmbodifyChain {
           resolvedConfig = cachedResolvedConfig;
         }
 
-        // deepFreeze: steps come from tracer — we don't own them, clone before storing
-        const steps = deepFreeze(await tracer.record(code, resolvedConfig));
+        // Validate steps conformity, then clone+freeze — tracer owns those step objects
+        const rawSteps = await tracer.record(code, resolvedConfig);
+        validateSteps(rawSteps);
+        const steps = deepFreeze(rawSteps);
         return embodifyChain({
           tracer,
           code,
