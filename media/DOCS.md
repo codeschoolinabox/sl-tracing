@@ -71,12 +71,12 @@ itself handles functions fine. It's `deepClone`'s specific design choice.) Never
 ### The Chain Object Footgun
 
 `deepFreezeInPlace` and `deepFreeze` both traverse `Object.values()` recursively. Chain
-objects (`TracifyChain`, `EmbodifyChain`) have getter properties with side effects — they
+objects (`EmbodyChain`, `EmbodifyChain`) have getter properties with side effects — they
 throw when required state (tracer, code) is missing. Use shallow `Object.freeze` for chain
 wrapper objects only. Each nested value is already individually frozen when stored.
 
 ### Freeze Once, Return As-Is
 
 Freeze at the point of creation or receipt. After that, return the frozen object directly
-on every subsequent access — never re-clone or re-freeze. Getters in `tracify` and
+on every subsequent access — never re-clone or re-freeze. Getters in `embody` and
 `embodify` return stored frozen values as-is.

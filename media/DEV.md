@@ -96,7 +96,7 @@ Layers are ordered bottom → top. Each layer can only import from layers below 
 | Layer         | Path               | What it owns                                                                                             |
 | ------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
 | `utils`       | `src/utils/`       | `deepClone`, `deepFreeze`, `deepMerge`, `deepEqual`, `isPlainObject` — pure, browser-compatible, no deps |
-| `errors`      | `src/errors/`      | `EmbodyError` base class; `TracerInvalidError`, `ArgumentInvalidError`, `ParseError`, etc.               |
+| `errors`      | `src/errors/`      | `TracingError` base class; `TracerInvalidError`, `ArgumentInvalidError`, `ParseError`, etc.              |
 | `configuring` | `src/configuring/` | AJV-based schema validation, shorthand expansion, preset merging, default-filling                        |
 | `testing`     | `src/testing/`     | Reference `txt:chars` tracer + `metaSchema`; exported via `./testing` subpath only                       |
 | `api`         | `src/api/`         | `trace`, `tracify`, `embody`, `embodify`, `tracing()`                                                    |
