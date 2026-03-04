@@ -7,26 +7,26 @@
  *
  * @example
  * ```typescript
- * import type { EmbodifyChain, EmbodyResult, TracifyChain } from '@study-lenses/tracing';
+ * import type { EmbodifyChain, TracifyResult, EmbodyChain } from '@study-lenses/tracing';
  * ```
  */
 
-import type EmbodyError from '../errors/embody-error.js';
+import type TracingError from '../errors/tracing-error.js';
 import type { ResolvedConfig, StepCore, TracerModule } from '../types.js';
 
 // ============================================================================
-// embody types
+// tracify types
 // ============================================================================
 
-/** Input for `embody()` and closure calls. All fields optional for partial application. */
-export type EmbodyInput = {
+/** Input for `tracify()` and closure calls. All fields optional for partial application. */
+export type TracifyInput = {
   readonly tracer?: TracerModule;
   readonly code?: string;
   readonly config?: object;
 };
 
-/** Successful trace result from `embody()`. All fields populated after tracing. */
-export type EmbodySuccess = {
+/** Successful trace result from `tracify()`. All fields populated after tracing. */
+export type TracifySuccess = {
   readonly ok: true;
   readonly steps: readonly StepCore[];
   readonly tracer: TracerModule;
@@ -35,31 +35,31 @@ export type EmbodySuccess = {
   readonly resolvedConfig: ResolvedConfig;
 };
 
-/** Error result from `embody()`. Never throws — errors are captured here. */
-export type EmbodyFailure = {
+/** Error result from `tracify()`. Never throws — errors are captured here. */
+export type TracifyFailure = {
   readonly ok: false;
-  readonly error: EmbodyError;
+  readonly error: TracingError;
   readonly tracer: TracerModule;
   readonly code: string;
   readonly config: object | undefined;
 };
 
 /** Union of success and failure — discriminate on `.ok`. */
-export type EmbodyResult = EmbodySuccess | EmbodyFailure;
+export type TracifyResult = TracifySuccess | TracifyFailure;
 
 /**
- * Callable closure returned by `embody()` when not all fields are provided.
+ * Callable closure returned by `tracify()` when not all fields are provided.
  * Call it with remaining fields to complete the trace, or inspect its properties
  * to see what state has been accumulated so far.
  */
-export type EmbodyClosure = {
+export type TracifyClosure = {
   readonly ok: true;
   readonly error: undefined;
   readonly tracer: TracerModule | undefined;
   readonly code: string | undefined;
   readonly config: object | undefined;
   readonly steps: undefined;
-} & ((remaining: EmbodyInput) => Promise<EmbodyResult> | EmbodyClosure);
+} & ((remaining: TracifyInput) => Promise<TracifyResult> | TracifyClosure);
 
 // ============================================================================
 // embodify types
@@ -93,25 +93,25 @@ export type EmbodifyChain = {
   readonly resolvedConfig: ResolvedConfig | undefined;
   readonly steps: readonly StepCore[] | undefined;
   readonly ok: boolean | undefined;
-  readonly error: EmbodyError | undefined;
+  readonly error: TracingError | undefined;
   readonly set: (input: EmbodifyInput) => EmbodifyChain;
   readonly trace: (input?: TraceMethodInput) => Promise<EmbodifyChain>;
 };
 
 // ============================================================================
-// tracify types
+// embody types
 // ============================================================================
 
 /**
- * Chainable builder returned by `tracify` and all chain methods.
+ * Chainable builder returned by `embody` and all chain methods.
  *
  * All validation is synchronous — errors throw immediately.
  * `.steps` is the only async property (it triggers the actual trace).
  */
-export type TracifyChain = {
-  tracer(tracerModule: TracerModule): TracifyChain;
-  code(source: string): TracifyChain;
-  config(cfg: unknown): TracifyChain;
+export type EmbodyChain = {
+  tracer(tracerModule: TracerModule): EmbodyChain;
+  code(source: string): EmbodyChain;
+  config(cfg: unknown): EmbodyChain;
   readonly steps: Promise<readonly StepCore[]>;
   readonly resolvedConfig: ResolvedConfig;
 };

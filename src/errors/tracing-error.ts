@@ -1,15 +1,15 @@
 /**
- * @file Base error class for all embody errors.
+ * @file Base error class for all tracing errors.
  *
  * Exists only for `instanceof` catch-all — never thrown directly.
- * All embody errors extend this class, enabling consumers to catch
+ * All tracing errors extend this class, enabling consumers to catch
  * any library error with a single check.
  */
 
 /**
- * Base class for all embody errors.
+ * Base class for all tracing errors.
  *
- * Use `instanceof EmbodyError` to catch any error from the embody library
+ * Use `instanceof TracingError` to catch any error from the tracing library
  * while letting non-library errors propagate.
  *
  * @example
@@ -17,7 +17,7 @@
  * try {
  *   const steps = await trace('chars', code);
  * } catch (error) {
- *   if (error instanceof EmbodyError) {
+ *   if (error instanceof TracingError) {
  *     showUserError(error.message);
  *   } else {
  *     throw error;
@@ -25,12 +25,12 @@
  * }
  * ```
  */
-class EmbodyError extends Error {
-  override readonly name: string = 'EmbodyError';
+class TracingError extends Error {
+  override readonly name: string = 'TracingError';
 
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
   }
 }
 
-export default EmbodyError;
+export default TracingError;

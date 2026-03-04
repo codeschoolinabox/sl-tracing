@@ -1,4 +1,4 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import LimitExceededError from '../limit-exceeded-error.js';
 
 describe('LimitExceededError', () => {
@@ -8,9 +8,9 @@ describe('LimitExceededError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new LimitExceededError('Exceeded maximum steps', 'steps', 1001);
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of LimitExceededError', () => {
@@ -20,9 +20,9 @@ describe('LimitExceededError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) LimitExceededError"', () => {
+    it('has name set to "(TracingError) LimitExceededError"', () => {
       const error = new LimitExceededError('Exceeded limit', 'steps', 1001);
-      expect(error.name).toBe('(EmbodyError) LimitExceededError');
+      expect(error.name).toBe('(TracingError) LimitExceededError');
     });
 
     it('stores the provided message', () => {

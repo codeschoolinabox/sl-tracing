@@ -14,16 +14,16 @@ describe('tracing', () => {
       expect(typeof api.trace).toBe('function');
     });
 
-    it('returns object with tracify chain', () => {
+    it('returns object with tracify closure', () => {
       const api = tracing(txtCharsTracer);
 
-      expect(typeof api.tracify.code).toBe('function');
+      expect(typeof api.tracify).toBe('function');
     });
 
-    it('returns object with embody closure', () => {
+    it('returns object with embody chain', () => {
       const api = tracing(txtCharsTracer);
 
-      expect(typeof api.embody).toBe('function');
+      expect(typeof api.embody.code).toBe('function');
     });
 
     it('returns object with embodify chain', () => {
@@ -48,10 +48,10 @@ describe('tracing', () => {
     });
   });
 
-  describe('pre-bound tracify', () => {
+  describe('pre-bound embody', () => {
     it('traces code via .code().steps without passing tracer again', async () => {
-      const { tracify } = tracing(txtCharsTracer);
-      const steps = await tracify.code('ab').steps;
+      const { embody } = tracing(txtCharsTracer);
+      const steps = await embody.code('ab').steps;
 
       expect(steps.length).toBeGreaterThan(0);
     });

@@ -110,7 +110,7 @@ export type ResolvedConfig = {
 /**
  * The tracing function signature every tracer must implement.
  *
- * Previously named `TracerModule` in embody — renamed to `RecordFunction` to avoid
+ * Previously named `TracerModule` in the original tracing library — renamed to `RecordFunction` to avoid
  * confusion with the new `TracerModule` object type.
  *
  * @remarks
@@ -136,7 +136,7 @@ export type RecordFunction<TOptions = unknown, TStep extends StepCore = StepCore
  *
  * @remarks
  * `id` is the cache-invalidation key — used to detect when a tracer has changed in
- * chainable APIs (`tracify`, `embodify`). Must be unique across your tracer ecosystem.
+ * chainable APIs (`embody`, `embodify`). Must be unique across your tracer ecosystem.
  *
  * `langs` declares which file extensions this tracer supports. Chainable APIs use it
  * to decide whether to keep or discard the current code when switching tracers:

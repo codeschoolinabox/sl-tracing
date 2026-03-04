@@ -6,7 +6,7 @@
  * a known source position.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 import type { SourceLoc } from './types.js';
 
 /**
@@ -29,8 +29,8 @@ import type { SourceLoc } from './types.js';
  * }
  * ```
  */
-class RuntimeError extends EmbodyError {
-  override readonly name = '(EmbodyError) RuntimeError' as const;
+class RuntimeError extends TracingError {
+  override readonly name = '(TracingError) RuntimeError' as const;
   readonly loc?: SourceLoc;
 
   constructor(message: string, loc?: SourceLoc, options?: ErrorOptions) {

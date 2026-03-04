@@ -1,3 +1,4 @@
+import OptionsInvalidError from '../../errors/options-invalid-error.js';
 import ParseError from '../../errors/parse-error.js';
 import StepsInvalidError from '../../errors/steps-invalid-error.js';
 import TracerInvalidError from '../../errors/tracer-invalid-error.js';
@@ -6,193 +7,387 @@ import tracify from '../tracify.js';
 
 import txtCharsTracer from './txt-chars/index.js';
 
+// Invalid TracerModule used to test error-capture behavior (empty id fails validateTracerModule)
+const invalidTracer = {
+  id: '',
+  langs: [],
+  record: () => Promise.resolve([]),
+} as unknown as TracerModule;
+
+const EXPECT_FUNCTION = 'expected function';
+
 describe('tracify', () => {
-  describe('async behavior', () => {
-    it('.steps returns a Promise', () => {
-      const result = tracify.tracer(txtCharsTracer).code('ab').steps;
+  describe('closure with properties (function-as-object)', () => {
+    it('partial closure has inspectable .tracer property', () => {
+      const partial = tracify({ tracer: txtCharsTracer });
 
-      expect(result).toBeInstanceOf(Promise);
+      expect(typeof partial).toBe('function');
+      expect((partial as { tracer: unknown }).tracer).toBe(txtCharsTracer);
     });
 
-    it('.steps resolves to steps array', async () => {
-      const steps = await tracify.tracer(txtCharsTracer).code('ab').steps;
+    it('partial closure has inspectable .code property', () => {
+      const partial = tracify({ code: 'ab' });
 
-      expect(Array.isArray(steps)).toBe(true);
-      expect(steps).toHaveLength(2);
+      expect(typeof partial).toBe('function');
+      expect((partial as { code: unknown }).code).toBe('ab');
     });
 
-    it('.resolvedConfig returns sync (not Promise)', () => {
-      const result = tracify.tracer(txtCharsTracer).resolvedConfig;
+    it('partial closure has inspectable .config property', () => {
+      const partial = tracify({ config: { options: { remove: ['a'] } } });
 
-      expect(result).not.toBeInstanceOf(Promise);
-      expect(result).toHaveProperty('meta');
-      expect(result).toHaveProperty('options');
-    });
-  });
-
-  describe('basic chaining', () => {
-    it('.tracer().code().steps resolves to steps array', async () => {
-      const steps = await tracify.tracer(txtCharsTracer).code('ab').steps;
-
-      expect(Array.isArray(steps)).toBe(true);
-      expect(steps).toHaveLength(2);
+      expect(typeof partial).toBe('function');
+      expect((partial as { config: unknown }).config).toEqual({ options: { remove: ['a'] } });
     });
 
-    it('.code().tracer().steps works (order independent)', async () => {
-      const steps = await tracify.code('ab').tracer(txtCharsTracer).steps;
+    it('partial closure has .ok = true (valid so far)', () => {
+      const partial = tracify({ tracer: txtCharsTracer });
 
-      expect(steps).toHaveLength(2);
+      expect((partial as { ok: unknown }).ok).toBe(true);
     });
 
-    it('.steps is a lazy getter (traces on access)', async () => {
-      const chain = tracify.tracer(txtCharsTracer).code('ab');
-      // Access .steps twice — should work both times
-      const steps1 = await chain.steps;
-      const steps2 = await chain.steps;
+    it('partial closure has .error = undefined (not errored)', () => {
+      const partial = tracify({ tracer: txtCharsTracer });
 
-      expect(steps1).toHaveLength(2);
-      expect(steps2).toHaveLength(2);
-    });
-  });
-
-  describe('config handling', () => {
-    it('.config() passes config to tracer module', async () => {
-      const steps = await tracify
-        .tracer(txtCharsTracer)
-        .code('ab')
-        .config({ options: { remove: ['a'], replace: {}, direction: 'lr' } }).steps;
-
-      expect(steps).toHaveLength(1);
+      expect((partial as { error: unknown }).error).toBeUndefined();
     });
 
-    it('without .config() uses tracer defaults', async () => {
-      const steps = await tracify.tracer(txtCharsTracer).code('ab').steps;
+    it('.config property is deep cloned (caller cannot mutate)', () => {
+      const config = { options: { remove: ['a'] } };
+      const partial = tracify({ config });
 
-      expect(steps).toHaveLength(2);
+      config.options.remove.push('b');
+
+      expect(
+        ((partial as { config: unknown }).config as { options: { remove: string[] } }).options
+          .remove,
+      ).toEqual(['a']);
     });
   });
 
-  describe('type validation (eager, sync)', () => {
-    it('.tracer() throws TracerInvalidError for non-object', () => {
-      expect(() => tracify.tracer(123 as unknown as TracerModule)).toThrow(TracerInvalidError);
+  describe('key overwriting (no duplicate-key error)', () => {
+    it('later tracer value overwrites earlier', async () => {
+      const partial = tracify({ tracer: txtCharsTracer });
+      if (typeof partial !== 'function') throw new Error(EXPECT_FUNCTION);
+      const result = await (partial({ tracer: txtCharsTracer, code: 'ab', config: {} }) as Promise<{
+        ok: boolean;
+        tracer: typeof txtCharsTracer;
+      }>);
+
+      expect(result.ok).toBe(true);
+      expect(result.tracer).toBe(txtCharsTracer);
     });
 
-    it('.tracer() message says "plain object" for non-object input', () => {
-      expect(() => tracify.tracer(null as unknown as TracerModule)).toThrow(/plain object/);
+    it('later code value overwrites earlier', async () => {
+      const partial = tracify({ code: 'ab' });
+      if (typeof partial !== 'function') throw new Error(EXPECT_FUNCTION);
+      const result = await (partial({ tracer: txtCharsTracer, code: 'cd', config: {} }) as Promise<{
+        ok: boolean;
+        code: string;
+      }>);
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('cd');
     });
 
-    it('.code() throws immediately on non-string', () => {
-      expect(() => tracify.code(456 as unknown as string)).toThrow(/expected a string/);
-    });
+    it('later config value overwrites earlier', async () => {
+      const partial = tracify({ config: {} });
+      if (typeof partial !== 'function') throw new Error(EXPECT_FUNCTION);
+      const result = await (partial({
+        tracer: txtCharsTracer,
+        code: 'ab',
+        config: { options: { remove: ['a'] } },
+      }) as Promise<{ ok: boolean }>);
 
-    it('.code() throws with descriptive message including actual type', () => {
-      expect(() => tracify.code(undefined as unknown as string)).toThrow(/got undefined/);
+      expect(result.ok).toBe(true);
     });
   });
 
-  describe('validation (sync throws from getters)', () => {
-    it('.tracer() throws TracerInvalidError for invalid TracerModule', () => {
-      expect(() => tracify.tracer({} as unknown as TracerModule)).toThrow(TracerInvalidError);
+  describe('full calls (all three fields present) - async', () => {
+    it('returns Promise when tracer, code, and config: {} provided', () => {
+      const resultPromise = tracify({ tracer: txtCharsTracer, code: 'ab', config: {} });
+
+      expect(resultPromise).toBeInstanceOf(Promise);
     });
 
-    it('.steps throws when tracer missing', () => {
-      expect(() => tracify.code('ab').steps).toThrow(/tracer.*required/i);
+    it('Promise resolves to { ok: true, steps }', async () => {
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab', config: {} });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.steps).toHaveLength(2);
+      }
     });
 
-    it('.steps throws when code missing', () => {
-      expect(() => tracify.tracer(txtCharsTracer).steps).toThrow(/code.*required/i);
+    it('passes custom config to tracer module', async () => {
+      const result = await tracify({
+        tracer: txtCharsTracer,
+        code: 'ab',
+        config: { options: { remove: ['a'], replace: {}, direction: 'lr' } },
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // 'a' removed, only 'b' remains
+        expect(result.steps).toHaveLength(1);
+      }
     });
 
-    it('.steps rejects with StepsInvalidError for invalid tracer output (async)', async () => {
+    it('returns error with TracerInvalidError for invalid TracerModule', async () => {
+      const result = await tracify({ tracer: invalidTracer, code: 'x', config: {} });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(TracerInvalidError);
+      }
+    });
+  });
+
+  describe('partial calls (return closures)', () => {
+    it('returns function when only tracer provided', () => {
+      const result = tracify({ tracer: txtCharsTracer });
+
+      expect(typeof result).toBe('function');
+    });
+
+    it('returns function when only code provided', () => {
+      const result = tracify({ code: 'ab' });
+
+      expect(typeof result).toBe('function');
+    });
+
+    it('returns function when tracer and code but no config', () => {
+      const result = tracify({ tracer: txtCharsTracer, code: 'ab' });
+
+      expect(typeof result).toBe('function');
+    });
+
+    it('closure completes trace when remaining pieces provided (async)', async () => {
+      const step1 = tracify({ tracer: txtCharsTracer });
+      if (typeof step1 !== 'function') throw new Error(EXPECT_FUNCTION);
+      const step2 = step1({ code: 'ab' });
+      if (typeof step2 !== 'function') throw new Error(EXPECT_FUNCTION);
+      const result = await step2({ config: {} });
+
+      expect('ok' in result && result.ok).toBe(true);
+      if ('steps' in result) {
+        expect(result.steps).toHaveLength(2);
+      }
+    });
+
+    it('closure accepts all remaining pieces at once (async)', async () => {
+      const withTracer = tracify({ tracer: txtCharsTracer });
+      if (typeof withTracer !== 'function') throw new Error(EXPECT_FUNCTION);
+      const result = await withTracer({ code: 'ab', config: {} });
+
+      expect('ok' in result && result.ok).toBe(true);
+      if ('steps' in result) {
+        expect(result.steps).toHaveLength(2);
+      }
+    });
+  });
+
+  describe('config semantics', () => {
+    it('config: {} triggers trace with tracer defaults (async)', async () => {
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab', config: {} });
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('config: undefined returns closure (waiting)', () => {
+      const result = tracify({ tracer: txtCharsTracer, code: 'ab', config: undefined });
+
+      expect(typeof result).toBe('function');
+    });
+
+    it('missing config key returns closure (waiting)', () => {
+      const result = tracify({ tracer: txtCharsTracer, code: 'ab' });
+
+      expect(typeof result).toBe('function');
+    });
+
+    it('config object triggers trace with custom config (async)', async () => {
+      const result = await tracify({
+        tracer: txtCharsTracer,
+        code: 'ab',
+        config: { options: { remove: [], replace: {}, direction: 'rl' } },
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // rl direction means reversed order
+        expect(result.steps[0]).toHaveProperty('char', 'b');
+      }
+    });
+  });
+
+  describe('error handling', () => {
+    it('catches ParseError and returns as ok: false (async)', async () => {
+      // interrobang triggers ParseError in chars module
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab‽', config: {} });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(ParseError);
+      }
+    });
+
+    it('preserves ParseError details (async)', async () => {
+      const result = await tracify({ tracer: txtCharsTracer, code: '‽', config: {} });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain('interrobang');
+        expect((result.error as ParseError).loc).toEqual({ line: 1, column: 0 });
+      }
+    });
+
+    it('catches StepsInvalidError from invalid tracer output (async)', async () => {
       const badTracer: TracerModule = {
         id: 'test:bad-steps',
         langs: [],
         record: () =>
           Promise.resolve([{ step: 0, loc: 'bad' }] as unknown as readonly StepCore[]),
       };
+      const result = await tracify({ tracer: badTracer, code: 'x', config: {} });
 
-      await expect(tracify.tracer(badTracer).code('hello').steps).rejects.toBeInstanceOf(
-        StepsInvalidError,
-      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(StepsInvalidError);
+      }
     });
 
-    it('.steps rejects with ParseError from tracer module (async)', async () => {
-      await expect(tracify.tracer(txtCharsTracer).code('‽').steps).rejects.toBeInstanceOf(
-        ParseError,
-      );
+    it('wraps invalid options in OptionsInvalidError (async)', async () => {
+      const result = await tracify({
+        tracer: txtCharsTracer,
+        code: 'ab',
+        config: { options: { remove: 'not-array', replace: {}, direction: 'lr' } },
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(OptionsInvalidError);
+      }
+    });
+  });
+
+  describe('result shape (includes all input keys)', () => {
+    it('success result includes tracer, code, config (async)', async () => {
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab', config: {} });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.tracer).toBe(txtCharsTracer);
+        expect(result.code).toBe('ab');
+        expect(result.config).toEqual({});
+      }
+    });
+
+    it('error result includes tracer, code, config (async)', async () => {
+      const result = await tracify({ tracer: invalidTracer, code: 'ab', config: {} });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.tracer).toBe(invalidTracer);
+        expect(result.code).toBe('ab');
+        expect(result.config).toEqual({});
+      }
+    });
+
+    it('result includes custom config object (async)', async () => {
+      const customConfig = { options: { remove: ['a'], replace: {}, direction: 'lr' as const } };
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab', config: customConfig });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.config).toEqual(customConfig);
+      }
     });
   });
 
   describe('immutability', () => {
-    it('config is deep cloned on entry — caller mutation does not affect chain', async () => {
+    it('caller cannot mutate internal state via config (async)', async () => {
       const config = { options: { remove: ['a'], replace: {}, direction: 'lr' as const } };
-      const chain = tracify.tracer(txtCharsTracer).code('ab').config(config);
+      const closure = tracify({ tracer: txtCharsTracer, config });
 
-      // Mutate original after storing in chain
+      // Mutate the original config
       config.options.remove.push('b');
 
-      // Chain should still have original config (only 'a' removed)
-      const steps = await chain.steps;
-      expect(steps).toHaveLength(1);
+      // Closure should still work with original config
+      if (typeof closure !== 'function') throw new Error(EXPECT_FUNCTION);
+      const result = await closure({ code: 'ab' });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Should have 1 step (only 'a' removed, not 'b')
+        expect(result.steps).toHaveLength(1);
+      }
+    });
+
+    it('returned config is frozen (immutable) (async)', async () => {
+      const result = await tracify({
+        tracer: txtCharsTracer,
+        code: 'ab',
+        config: { options: { remove: ['a'], replace: {}, direction: 'lr' as const } },
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok && result.config !== undefined) {
+        expect(Object.isFrozen(result.config)).toBe(true);
+      }
+    });
+
+    it('re-invoking closure does not share state (async)', async () => {
+      const closure = tracify({ tracer: txtCharsTracer });
+      if (typeof closure !== 'function') throw new Error(EXPECT_FUNCTION);
+
+      const result1 = await closure({ code: 'a', config: {} });
+      const result2 = await closure({ code: 'ab', config: {} });
+
+      expect(result1.ok).toBe(true);
+      expect(result2.ok).toBe(true);
+      if (result1.ok && result2.ok) {
+        expect(result1.steps).toHaveLength(1);
+        expect(result2.steps).toHaveLength(2);
+      }
     });
   });
 
-  describe('memoization', () => {
-    it('does not re-trace on multiple .steps accesses', async () => {
-      const chain = tracify.tracer(txtCharsTracer).code('ab');
+  describe('resolvedConfig', () => {
+    it('success result includes resolvedConfig with tracer defaults (async)', async () => {
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab', config: {} });
 
-      const steps1 = await chain.steps;
-      const steps2 = await chain.steps;
-
-      // Same content, same frozen reference (freeze once, return as-is)
-      expect(steps1).toEqual(steps2);
-      expect(steps1).toBe(steps2);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.resolvedConfig).toHaveProperty('options');
+        expect(result.resolvedConfig.options).toHaveProperty('direction', 'lr');
+        expect(result.resolvedConfig.options).toHaveProperty('remove');
+        expect(result.resolvedConfig.options).toHaveProperty('replace');
+      }
     });
 
-    it('.steps are frozen (immutable)', async () => {
-      const chain = tracify.tracer(txtCharsTracer).code('ab');
-      const steps = await chain.steps;
+    it('resolvedConfig includes user options merged with defaults (async)', async () => {
+      const result = await tracify({
+        tracer: txtCharsTracer,
+        code: 'ab',
+        config: { options: { remove: ['a'] } },
+      });
 
-      expect(Object.isFrozen(steps)).toBe(true);
-      expect(Object.isFrozen(steps[0])).toBe(true);
-    });
-  });
-
-  describe('resolvedConfig getter (sync)', () => {
-    it('.resolvedConfig returns options with tracer defaults', () => {
-      const chain = tracify.tracer(txtCharsTracer);
-      const resolved = chain.resolvedConfig;
-
-      expect(resolved).toHaveProperty('options');
-      expect(resolved.options).toHaveProperty('direction', 'lr');
-      expect(resolved.options).toHaveProperty('remove');
-      expect(resolved.options).toHaveProperty('replace');
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const options = result.resolvedConfig.options as { remove: string[]; direction: string };
+        expect(options.remove).toEqual(['a']);
+        expect(options.direction).toBe('lr'); // default
+      }
     });
 
-    it('.resolvedConfig includes user-provided options merged with defaults', () => {
-      const chain = tracify.tracer(txtCharsTracer).config({ options: { remove: ['a'] } });
-      const resolved = chain.resolvedConfig;
+    it('resolvedConfig is frozen (immutable) (async)', async () => {
+      const result = await tracify({ tracer: txtCharsTracer, code: 'ab', config: {} });
 
-      expect((resolved.options as { remove: string[] }).remove).toEqual(['a']);
-      expect((resolved.options as { direction: string }).direction).toBe('lr'); // default
-    });
-
-    it('.resolvedConfig returns same frozen reference each call', () => {
-      const chain = tracify.tracer(txtCharsTracer);
-
-      const resolved1 = chain.resolvedConfig;
-      const resolved2 = chain.resolvedConfig;
-
-      // Freeze once, return as-is — same reference
-      expect(resolved1).toBe(resolved2);
-      expect(Object.isFrozen(resolved1)).toBe(true);
-    });
-
-    it('.resolvedConfig does not require code', () => {
-      const resolved = tracify.tracer(txtCharsTracer).resolvedConfig;
-
-      expect(resolved).toHaveProperty('meta');
-      expect(resolved).toHaveProperty('options');
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(Object.isFrozen(result.resolvedConfig)).toBe(true);
+        expect(Object.isFrozen(result.resolvedConfig.options)).toBe(true);
+      }
     });
   });
 });

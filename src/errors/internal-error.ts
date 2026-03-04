@@ -5,13 +5,13 @@
  * Wraps the original error in the cause property.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown for unexpected internal errors.
  *
  * When caught, the original error (if any) is available in the `cause` property.
- * These errors typically indicate bugs in embody that should be reported.
+ * These errors typically indicate bugs in the tracing library that should be reported.
  *
  * @example
  * ```typescript
@@ -25,8 +25,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class InternalError extends EmbodyError {
-  override readonly name = '(EmbodyError) InternalError' as const;
+class InternalError extends TracingError {
+  override readonly name = '(TracingError) InternalError' as const;
 
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);

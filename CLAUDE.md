@@ -40,15 +40,15 @@ tracing(tracerModule)            ← default export; validates + pre-binds
   → returns { trace, tracify, embody, embodify }
 
 trace(code, config?)             ← positional, throws
-tracify                          ← chainable builder, throws
-embody({ code, config })         ← keyed args, returns { ok, steps, ... }
+embody                           ← chainable builder, throws
+tracify({ tracer, code, config })  ← keyed args, returns { ok, steps, ... }
 embodify({ ... })                ← keyed + chainable
 
 Each wrapper:
   1. Validate + type-check args
   2. configuring/ → validate config against metaSchema, expand presets, fill defaults
   3. tracerModule.record(code, resolvedConfig) → steps
-  4. Return steps (trace/tracify) or wrap in { ok, steps } (embody/embodify)
+  4. Return steps (trace/embody) or wrap in { ok, steps } (tracify/embodify)
 ```
 
 **Layer stack** (narrowest at the bottom — each layer can only import layers below it):
@@ -58,7 +58,7 @@ Each wrapper:
 | `entry`       | `src/index.ts`     | Public exports                                                            |
 | `api`         | `src/api/`         | 4 wrappers + `tracing()` sugar                                            |
 | `configuring` | `src/configuring/` | AJV schema validation, preset expansion, default-filling                  |
-| `errors`      | `src/errors/`      | `EmbodyError` base + `TracerInvalidError`, `ArgumentInvalidError`, etc.   |
+| `errors`      | `src/errors/`      | `TracingError` base + `TracerInvalidError`, `ArgumentInvalidError`, etc.  |
 | `utils`       | `src/utils/`       | `deepClone`, `deepFreeze`, `deepMerge`, `deepEqual`, `isPlainObject`      |
 | `testing`     | `src/testing/`     | Reference `txt:chars` tracer + `metaSchema` (export via `./testing` only) |
 

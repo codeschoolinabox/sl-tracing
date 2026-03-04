@@ -1,228 +1,176 @@
 /**
- * @file Chainable tracing API that throws on errors.
+ * @file Safe tracing with Result pattern (ok/error) and partial application.
  *
- * Provides fluent interface for building trace configuration.
- * All validation is SYNCHRONOUS — errors throw immediately.
- * Only `.steps` (the final record call) is async.
+ * Returns `Promise<TracifyResult>` when all 3 fields are provided.
+ * Returns `TracifyClosure` (callable with remaining fields) when fields are missing.
+ *
+ * Never throws — all errors (including TracerInvalidError) are returned as
+ * `{ ok: false, error }` results.
  *
  * @example
  * ```typescript
- * // Direct usage
- * const steps = await tracify.tracer(myTracer).code('hello').steps;
+ * // All at once
+ * const result = await tracify({ tracer: myTracer, code: 'ab', config: {} });
+ * if (result.ok) console.log(result.steps);
  *
- * // Via tracing() sugar
- * const { tracify } = tracing(myTracer);
- * const steps = await tracify.code('hello').steps;
+ * // Partial application
+ * const withTracer = tracify({ tracer: myTracer });
+ * const result = await withTracer({ code: 'ab', config: {} });
  * ```
  */
 
 import metaSchema from '../configuring/meta-schema.js';
 import prepareConfig from '../configuring/prepare-config.js';
 import type { JSONSchema } from '../configuring/types.js';
-import ArgumentInvalidError from '../errors/argument-invalid-error.js';
-import type { MetaConfig, ResolvedConfig, StepCore, TracerModule } from '../types.js';
+import TracingError from '../errors/tracing-error.js';
+import InternalError from '../errors/internal-error.js';
+import type { MetaConfig, TracerModule } from '../types.js';
 import deepFreezeInPlace from '../utils/deep-freeze-in-place.js';
 import deepFreeze from '../utils/deep-freeze.js';
 
-import type { TracifyChain } from './types.js';
+import type { TracifyClosure, TracifyInput, TracifyResult } from './types.js';
 import validateSteps from './validate-steps.js';
 import validateTracerModule from './validate-tracer-module.js';
 
 /**
- * Immutable input state for a tracify chain — internal only, not exposed publicly.
- * Per-instance computation cache lives in local `let` variables inside `tracifyChain()`,
- * not here — keeps state type fully readonly.
+ * Executes trace with prepared state.
+ * All errors — including TracerInvalidError — are caught and returned as
+ * `{ ok: false }` results. Never throws.
  */
-type TracifyState = {
-  readonly tracer?: TracerModule | undefined;
-  readonly code?: string | undefined;
-  readonly config?: unknown;
-};
+async function executeTrace(
+  tracer: TracerModule,
+  code: string,
+  config: object | undefined,
+): Promise<TracifyResult> {
+  try {
+    // 1. Validate tracer shape (TracerInvalidError extends TracingError — caught below)
+    validateTracerModule(tracer);
 
-/**
- * Creates a chain with the given state.
- * Each method returns a new chain instance, invalidating per-instance cache.
- */
-function tracifyChain(state: TracifyState = {}): TracifyChain {
-  // Per-instance cache — mutable let variables, not on state (keeps state fully readonly)
-  let cachedResolvedConfig: ResolvedConfig | undefined;
-  let cachedSteps: Promise<readonly StepCore[]> | undefined;
+    // 2. Prepare config
+    const userConfig = (config ?? {}) as {
+      readonly meta?: Readonly<Record<string, unknown>>;
+      readonly options?: Readonly<Record<string, unknown>>;
+    };
+    const meta = prepareConfig(userConfig.meta ?? {}, metaSchema) as MetaConfig;
+    const options = tracer.optionsSchema
+      ? (prepareConfig(userConfig.options ?? {}, tracer.optionsSchema as JSONSchema) as Record<
+          string,
+          unknown
+        >)
+      : {};
 
-  // Shallow freeze: prevents method reassignment without invoking getter side effects
-  return Object.freeze({
-    /**
-     * Sets the tracer and returns a new chain.
-     *
-     * **Cache invalidation**: always clears config; clears code only when the new
-     * tracer is incompatible with the current one (different language family and
-     * neither is universal).
-     *
-     * @param _tracer - A valid `TracerModule` object
-     * @throws {TracerInvalidError} if `_tracer` does not satisfy the TracerModule contract
-     */
-    tracer(_tracer: TracerModule): TracifyChain {
-      validateTracerModule(_tracer);
-      // Extract oldLangsCount to avoid chained ?. and ?? operators in the expression below
-      const oldLangsCount = state.tracer?.langs.length ?? 0;
-      const langsCompatible =
-        _tracer.langs.length === 0 ||
-        oldLangsCount === 0 ||
-        _tracer.langs.some((l) => state.tracer?.langs.includes(l));
-      const keepCode = _tracer.id === state.tracer?.id || langsCompatible;
-      return tracifyChain({
-        tracer: _tracer,
-        code: keepCode ? state.code : undefined,
-        config: undefined,
-      });
-    },
+    // deepFreezeInPlace: meta + options are fresh from prepareConfig — we own them.
+    // Pass the frozen object to tracer; same reference echoed back in result.
+    const resolvedConfig = deepFreezeInPlace({ meta, options });
 
-    /**
-     * Sets the code and returns a new chain.
-     *
-     * @param _code - Source code to trace
-     * @throws {ArgumentInvalidError} if code is not a non-empty string
-     */
-    code(_code: string): TracifyChain {
-      if (typeof _code !== 'string') {
-        throw new ArgumentInvalidError(
-          'code',
-          `tracify.code(): expected a string, got ${typeof _code}`,
-        );
-      }
-      if (_code === '') {
-        throw new ArgumentInvalidError('code', 'tracify.code(): expected a non-empty string');
-      }
-      return tracifyChain({ ...state, code: _code });
-    },
+    // 3. Semantic validation
+    tracer.verifyOptions?.(resolvedConfig.options);
 
-    /**
-     * Sets the config and returns a new chain.
-     *
-     * @param _config - Config object with optional `meta` and `options` fields
-     * @throws {ArgumentInvalidError} if config is not an object
-     */
-    config(_config: unknown): TracifyChain {
-      if (_config !== null && typeof _config !== 'object') {
-        throw new ArgumentInvalidError(
-          'config',
-          `tracify.config(): expected an object, got ${typeof _config}`,
-        );
-      }
-      // deepFreeze: user-supplied config — we don't own it, clone before storing
-      return tracifyChain({ ...state, config: deepFreeze(_config ?? {}) });
-    },
+    // 4. Record — validate conformity, then clone+freeze (tracer owns those step objects)
+    const rawSteps = await tracer.record(code, resolvedConfig);
+    validateSteps(rawSteps);
+    const steps = deepFreeze(rawSteps);
 
-    /**
-     * Executes the trace and resolves to the array of steps.
-     * Memoized per chain instance: computed once on first access, cached thereafter.
-     *
-     * @throws {ArgumentInvalidError} (sync) if tracer or code is not set
-     * @throws {OptionsInvalidError} (sync) if schema validation fails
-     * @throws {OptionsSemanticInvalidError} (sync) if verifyOptions constraint violated
-     */
-    get steps(): Promise<readonly StepCore[]> {
-      // Return cached frozen steps directly — no re-clone needed (already frozen)
-      if (cachedSteps) return cachedSteps;
-
-      if (state.tracer === undefined) {
-        throw new ArgumentInvalidError(
-          'tracer',
-          'tracify: a tracer is required to generate trace steps',
-        );
-      }
-      if (state.code === undefined) {
-        throw new ArgumentInvalidError('code', 'tracify: code is required to generate trace steps');
-      }
-
-      if (!cachedResolvedConfig) {
-        const userConfig = (state.config ?? {}) as {
-          readonly meta?: unknown;
-          readonly options?: unknown;
-        };
-        const meta = prepareConfig(userConfig.meta ?? {}, metaSchema) as MetaConfig;
-        const options = state.tracer.optionsSchema
-          ? (prepareConfig(
-              userConfig.options ?? {},
-              state.tracer.optionsSchema as JSONSchema,
-            ) as Record<string, unknown>)
-          : {};
-        // deepFreezeInPlace: meta + options are fresh from prepareConfig — we own them
-        cachedResolvedConfig = deepFreezeInPlace({ meta, options });
-      }
-
-      state.tracer.verifyOptions?.(cachedResolvedConfig.options);
-      // Validate steps conformity, then clone+freeze — tracer owns those step objects
-      cachedSteps = state.tracer
-        .record(state.code, cachedResolvedConfig)
-        .then((steps) => (validateSteps(steps), steps))
-        .then(deepFreeze);
-      return cachedSteps;
-    },
-
-    /**
-     * Resolves config synchronously without tracing.
-     * Memoized per chain instance.
-     *
-     * @throws {ArgumentInvalidError} (sync) if tracer is not set
-     * @throws {OptionsInvalidError} (sync) if schema validation fails
-     * @throws {OptionsSemanticInvalidError} (sync) if verifyOptions constraint violated
-     */
-    get resolvedConfig(): ResolvedConfig {
-      // Return cached frozen resolvedConfig directly — no re-clone needed (already frozen)
-      if (cachedResolvedConfig) return cachedResolvedConfig;
-
-      if (state.tracer === undefined) {
-        throw new ArgumentInvalidError(
-          'tracer',
-          'tracify: tracer is required to access the resolved config',
-        );
-      }
-
-      const userConfig = (state.config ?? {}) as {
-        readonly meta?: unknown;
-        readonly options?: unknown;
-      };
-      const meta = prepareConfig(userConfig.meta ?? {}, metaSchema) as MetaConfig;
-      const options = state.tracer.optionsSchema
-        ? (prepareConfig(
-            userConfig.options ?? {},
-            state.tracer.optionsSchema as JSONSchema,
-          ) as Record<string, unknown>)
-        : {};
-      // deepFreezeInPlace: meta + options are fresh from prepareConfig — we own them
-      cachedResolvedConfig = deepFreezeInPlace({ meta, options });
-      state.tracer.verifyOptions?.(cachedResolvedConfig.options);
-      return cachedResolvedConfig;
-    },
-  }) as TracifyChain;
+    // deepFreezeInPlace: we just built this result wrapper — freeze in place
+    return deepFreezeInPlace({
+      ok: true as const,
+      steps,
+      tracer,
+      code,
+      config,
+      resolvedConfig,
+    });
+  } catch (caughtError) {
+    if (caughtError instanceof TracingError) {
+      return { ok: false as const, error: caughtError, tracer, code, config };
+    }
+    const message = caughtError instanceof Error ? caughtError.message : String(caughtError);
+    const cause = caughtError instanceof Error ? caughtError : undefined;
+    return {
+      ok: false as const,
+      error: new InternalError(message, { cause }),
+      tracer,
+      code,
+      config,
+    };
+  }
 }
 
 /**
- * Pre-instantiated chainable builder for trace-throws API.
+ * Creates a closure with attached state properties.
+ */
+function createClosure(state: {
+  readonly tracer: TracerModule | undefined;
+  readonly code: string | undefined;
+  readonly config: object | undefined;
+}): TracifyClosure {
+  // eslint-disable-next-line sonarjs/function-return-type -- Intentional: curried function
+  function closure(remaining: TracifyInput = {}): Promise<TracifyResult> | TracifyClosure {
+    const tracer = remaining.tracer ?? state.tracer;
+    const code = remaining.code ?? state.code;
+    // deepFreeze: user-supplied config — we don't own it, clone+freeze before storing
+    const config = remaining.config === undefined ? state.config : deepFreeze(remaining.config);
+
+    if (tracer !== undefined && typeof code === 'string' && config !== undefined) {
+      return executeTrace(tracer, code, config);
+    }
+
+    return createClosure({ tracer, code, config });
+  }
+
+  // eslint-disable-next-line functional/immutable-data -- Intentional: decorating closure
+  Object.defineProperties(closure, {
+    ok: { value: true, enumerable: true },
+    error: { value: undefined, enumerable: true },
+    tracer: { value: state.tracer, enumerable: true },
+    code: { value: state.code, enumerable: true },
+    // config is already frozen (deepFreeze on entry) — return as-is
+    config: { value: state.config, enumerable: true },
+    steps: { value: undefined, enumerable: true },
+  });
+
+  return closure as TracifyClosure;
+}
+
+/**
+ * Safe tracing with partial application. Result pattern — never throws.
  *
- * Build state through `.tracer()`, `.code()`, `.config()`, then await `.steps`.
- * All validation is SYNCHRONOUS — errors throw immediately.
- * Only `.steps` (the final `record()` call) is async.
+ * - All 3 fields present (`tracer`, `code`, `config`) → returns `Promise<TracifyResult>`
+ * - Any field missing → returns `TracifyClosure` for further partial application
  *
- * Typically used via {@link tracing} which returns a chain with the tracer pre-set
- * (no need to call `.tracer()` manually).
+ * @param input - Fields to provide now. All are optional; missing fields keep the closure open.
+ *   - `tracer` — a valid `TracerModule` object
+ *   - `code` — source code / input string to trace
+ *   - `config` — `{ meta?, options? }` config object. Pass `{}` for defaults.
+ *     `undefined` = "not yet provided" (returns closure); `{}` = "use defaults" (proceeds).
+ * @returns `Promise<TracifyResult>` when all 3 fields are set; `TracifyClosure` otherwise
  *
- * @throws {TracerInvalidError} `.tracer()` — if TracerModule contract violated
- * @throws {ArgumentInvalidError} `.code()` — if code is not a non-empty string
- * @throws {ArgumentInvalidError} `.config()` — if config is not an object
- * @throws {ArgumentInvalidError} `.steps` — if tracer or code not set
- * @throws {OptionsInvalidError} `.steps` — if meta or options fail JSON Schema validation
- * @throws {OptionsSemanticInvalidError} `.steps` — if verifyOptions constraint violated
+ * @remarks
+ * **Never throws.** All errors — including `TracerInvalidError` — are caught and returned
+ * as `{ ok: false, error }`. Safe to use in production without try-catch.
  *
  * @example
  * ```typescript
- * // Direct usage
- * const steps = await tracify.tracer(myTracer).code('hello').steps;
+ * // All at once
+ * const result = await tracify({ tracer: myTracer, code: 'hello', config: {} });
+ * if (result.ok) console.log(result.steps);
  *
- * // Via tracing() — tracer pre-set
- * const { tracify } = tracing(myTracer);
- * const steps = await tracify.code('hello').steps;
+ * // Partial application — build up state across call sites
+ * const withTracer = tracify({ tracer: myTracer });
+ * const result = await withTracer({ code: 'hello', config: {} });
  * ```
  */
-const tracify: TracifyChain = tracifyChain({});
+
+function tracify(input: TracifyInput = {}): Promise<TracifyResult> | TracifyClosure {
+  const { tracer, code, config } = input;
+  // deepFreeze: user-supplied config — we don't own it, clone+freeze before storing
+  const frozenConfig = config === undefined ? undefined : deepFreeze(config);
+
+  if (tracer !== undefined && typeof code === 'string' && frozenConfig !== undefined) {
+    return executeTrace(tracer, code, frozenConfig);
+  }
+
+  return createClosure({ tracer, code, config: frozenConfig });
+}
+
 export default tracify;

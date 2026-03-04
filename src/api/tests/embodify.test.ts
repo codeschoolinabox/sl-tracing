@@ -1,4 +1,4 @@
-import EmbodyError from '../../errors/embody-error.js';
+import TracingError from '../../errors/tracing-error.js';
 import StepsInvalidError from '../../errors/steps-invalid-error.js';
 import type { StepCore, TracerModule } from '../../types.js';
 import embodify from '../embodify.js';
@@ -127,11 +127,11 @@ describe('embodify', () => {
       expect(traced.error).toBeInstanceOf(StepsInvalidError);
     });
 
-    it('after failed trace .error contains EmbodyError', async () => {
+    it('after failed trace .error contains TracingError', async () => {
       const traced = await embodify({ tracer: invalidTracer, code: 'ab' }).trace();
 
       expect(traced.ok).toBe(false);
-      expect(traced.error).toBeInstanceOf(EmbodyError);
+      expect(traced.error).toBeInstanceOf(TracingError);
     });
   });
 

@@ -36,7 +36,7 @@ export { default as embodify } from './api/embodify.js';
 // Error Classes (for instanceof checks and catch clauses)
 // ============================================================================
 
-export { default as EmbodyError } from './errors/embody-error.js';
+export { default as TracingError } from './errors/tracing-error.js';
 export { default as TracerInvalidError } from './errors/tracer-invalid-error.js';
 export { default as ArgumentInvalidError } from './errors/argument-invalid-error.js';
 export { default as OptionsInvalidError } from './errors/options-invalid-error.js';
@@ -69,15 +69,15 @@ export type { SourceLoc } from './errors/types.js';
 // ============================================================================
 
 export type {
-  EmbodyInput,
-  EmbodyClosure,
-  EmbodyResult,
-  EmbodySuccess,
-  EmbodyFailure,
+  TracifyInput,
+  TracifyClosure,
+  TracifyResult,
+  TracifySuccess,
+  TracifyFailure,
   EmbodifyInput,
   TraceMethodInput,
   EmbodifyChain,
-  TracifyChain,
+  EmbodyChain,
 } from './api/types.js';
 
 // ============================================================================

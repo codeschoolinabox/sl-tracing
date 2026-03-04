@@ -1,4 +1,4 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import InternalError from '../internal-error.js';
 
 describe('InternalError', () => {
@@ -8,9 +8,9 @@ describe('InternalError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new InternalError('Unexpected error');
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of InternalError', () => {
@@ -20,9 +20,9 @@ describe('InternalError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) InternalError"', () => {
+    it('has name set to "(TracingError) InternalError"', () => {
       const error = new InternalError('Unexpected error');
-      expect(error.name).toBe('(EmbodyError) InternalError');
+      expect(error.name).toBe('(TracingError) InternalError');
     });
 
     it('stores the provided message', () => {

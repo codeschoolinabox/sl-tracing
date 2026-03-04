@@ -13,7 +13,7 @@
  *
  * // All wrappers use myTracer — no need to pass it on every call
  * const steps = await trace('let x = 1;');
- * const result = await embody({ code: 'let x = 1;', config: {} });
+ * const result = await tracify({ code: 'let x = 1;', config: {} });
  * ```
  */
 
@@ -34,15 +34,15 @@ import type { TracerModule } from './types.js';
  * in an invalid state.
  *
  * The returned `trace` is the curried form: `(code, config?) => Promise<StepCore[]>`.
- * The returned `tracify` is a chain with the tracer pre-set.
- * The returned `embody` is a closure with the tracer pre-set.
+ * The returned `tracify` is a closure with the tracer pre-set.
+ * The returned `embody` is a chain with the tracer pre-set.
  * The returned `embodify` is a chain with the tracer pre-set.
  *
  * @param tracerModule - A valid `TracerModule` object
  * @returns Frozen object with all four pre-bound API wrappers:
  *   - `trace(code, config?)` — positional args, throws on error
- *   - `tracify` — chainable builder with tracer pre-set, throws on error
- *   - `embody({ code, config? })` — keyed args with partial application, returns Result
+ *   - `tracify({ code, config? })` — keyed args with partial application, returns Result
+ *   - `embody` — chainable builder with tracer pre-set, throws on error
  *   - `embodify({ code?, config? })` — immutable chainable builder, returns Result
  * @throws {TracerInvalidError} if `tracerModule` does not satisfy the contract
  *
@@ -50,7 +50,7 @@ import type { TracerModule } from './types.js';
  * ```typescript
  * const api = tracing(myTracer);
  * const steps = await api.trace('hello');
- * const result = await api.embody({ code: 'hello', config: {} });
+ * const result = await api.tracify({ code: 'hello', config: {} });
  * ```
  */
 function tracing(tracerModule: TracerModule) {
@@ -58,8 +58,8 @@ function tracing(tracerModule: TracerModule) {
 
   return Object.freeze({
     trace: trace(tracerModule),
-    tracify: tracify.tracer(tracerModule),
-    embody: embody({ tracer: tracerModule }),
+    tracify: tracify({ tracer: tracerModule }),
+    embody: embody.tracer(tracerModule),
     embodify: embodify({ tracer: tracerModule }),
   });
 }

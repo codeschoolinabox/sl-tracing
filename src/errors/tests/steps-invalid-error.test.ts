@@ -1,18 +1,18 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import StepsInvalidError from '../steps-invalid-error.js';
 
 describe('StepsInvalidError', () => {
   describe('construction', () => {
-    it('extends EmbodyError', () => {
+    it('extends TracingError', () => {
       const error = new StepsInvalidError(['some violation']);
 
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('sets name', () => {
       const error = new StepsInvalidError(['some violation']);
 
-      expect(error.name).toBe('(EmbodyError) StepsInvalidError');
+      expect(error.name).toBe('(TracingError) StepsInvalidError');
     });
 
     it('stores violations array', () => {

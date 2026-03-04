@@ -43,7 +43,7 @@ frozen.nested.value = 3; // TypeError in strict mode
 Recursively freezes an object **in place** — no clone. Returns the same reference.
 Use when you just built the object and own it.
 
-**Do not use on chain objects** (`TracifyChain`, `EmbodifyChain`). Their getter side
+**Do not use on chain objects** (`EmbodyChain`, `EmbodifyChain`). Their getter side
 effects fire during `Object.values()` traversal and throw when required state is missing.
 
 ```typescript

@@ -19,7 +19,7 @@ import metaSchema from '../configuring/meta-schema.js';
 import prepareConfig from '../configuring/prepare-config.js';
 import type { JSONSchema } from '../configuring/types.js';
 import ArgumentInvalidError from '../errors/argument-invalid-error.js';
-import EmbodyError from '../errors/embody-error.js';
+import TracingError from '../errors/tracing-error.js';
 import InternalError from '../errors/internal-error.js';
 import type { MetaConfig, ResolvedConfig, StepCore, TracerModule } from '../types.js';
 import deepFreezeInPlace from '../utils/deep-freeze-in-place.js';
@@ -40,7 +40,7 @@ type EmbodifyState = {
   readonly resolvedConfig: ResolvedConfig | undefined;
   readonly steps: readonly StepCore[] | undefined;
   readonly ok: boolean | undefined;
-  readonly error: EmbodyError | undefined;
+  readonly error: TracingError | undefined;
 };
 
 /**
@@ -177,7 +177,7 @@ function embodifyChain(state: EmbodifyState): EmbodifyChain {
       }
 
       try {
-        // Validate tracer shape (TracerInvalidError extends EmbodyError — caught below)
+        // Validate tracer shape (TracerInvalidError extends TracingError — caught below)
         validateTracerModule(tracer);
 
         let resolvedConfig: ResolvedConfig;
@@ -215,7 +215,7 @@ function embodifyChain(state: EmbodifyState): EmbodifyChain {
           error: undefined,
         });
       } catch (caughtError) {
-        if (caughtError instanceof EmbodyError) {
+        if (caughtError instanceof TracingError) {
           return embodifyChain({
             tracer,
             code,

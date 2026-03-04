@@ -7,10 +7,10 @@ For API signatures and usage, see the TSDoc comments in each source file.
 
 ## The 2x2 Matrix
 
-|            | Simple                     | Chainable                    |
-| ---------- | -------------------------- | ---------------------------- |
-| **Throws** | `trace(code, config?)`     | `tracify.code().steps`       |
-| **Safe**   | `embody({ code, config })` | `embodify({ code }).trace()` |
+|            | Simple                              | Chainable                    |
+| ---------- | ----------------------------------- | ---------------------------- |
+| **Throws** | `trace(code, config?)`              | `embody.code().steps`        |
+| **Safe**   | `tracify({ tracer, code, config })` | `embodify({ code }).trace()` |
 
 Four wrappers rather than one because the two axes are genuinely independent trade-offs:
 
@@ -32,14 +32,14 @@ OOP classes (Tracer, Embodier) were the original embody API. Eliminated for:
 - **Testability**: harder to assert on immutable snapshots vs. mutable instance state
 - **Functional constraint**: codebase bans `class` and `this` as a convention (ESLint enforced)
 
-The chainable functional APIs (`tracify`, `embodify`) provide the same builder pattern
+The chainable functional APIs (`embody`, `embodify`) provide the same builder pattern
 with immutable state transitions.
 
 ---
 
 ## Cache Invalidation Design
 
-`tracify` and `embodify` cache `resolvedConfig` and `steps` to avoid redundant work.
+`embody` and `embodify` cache `resolvedConfig` and `steps` to avoid redundant work.
 
 ### What Invalidates What
 
@@ -82,7 +82,7 @@ validateTracerModule(tracerModule)   ← at tracing() call — TracerInvalidErro
 │
 ├── ArgumentInvalidError             ← sync, on each wrapper call (wrong arg types)
 │
-└── at .steps / .trace() / completing embody() call:
+└── at .steps / .trace() / completing tracify() call:
       VALIDATION (sync):
         prepareConfig(meta, metaSchema)      → OptionsInvalidError
         prepareConfig(options, schema)       → OptionsInvalidError

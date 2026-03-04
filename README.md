@@ -91,11 +91,11 @@ const { trace, tracify, embody, embodify } = tracing(tracerModule);
 // trace: positional args, throws on error
 const steps = await trace(code, config);
 
-// tracify: chainable, throws on error
-const steps = await tracify.code(code).config(config).steps;
+// embody: chainable, throws on error
+const steps = await embody.code(code).config(config).steps;
 
-// embody: keyed args, returns { ok, steps } or { ok: false, error }
-const result = await embody({ code, config });
+// tracify: keyed args, returns { ok, steps } or { ok: false, error }
+const result = await tracify({ code, config });
 if (result.ok) console.log(result.steps);
 
 // embodify: keyed + chainable, .trace() is async
@@ -107,10 +107,10 @@ if (chain.ok) console.log(chain.steps);
 
 ## API — The 2x2 Matrix
 
-|            | Simple   | Chainable  |
-| ---------- | -------- | ---------- |
-| **Throws** | `trace`  | `tracify`  |
-| **Safe**   | `embody` | `embodify` |
+|            | Simple    | Chainable  |
+| ---------- | --------- | ---------- |
+| **Throws** | `trace`   | `embody`   |
+| **Safe**   | `tracify` | `embodify` |
 
 **Throws** = errors propagate as exceptions. Use in scripts and REPLs.
 **Safe** = errors returned as `{ ok: false, error }`. Use in production UIs.
@@ -223,7 +223,7 @@ Layer stack (bottom → top, each layer imports only from below):
 
 ```text
 src/utils/       ← deep-clone, deep-freeze, deep-freeze-in-place, deep-merge, deep-equal
-src/errors/      ← EmbodyError base + 9 specific error classes
+src/errors/      ← TracingError base + 9 specific error classes
 src/configuring/ ← pure config pipeline (schema-agnostic, tracer-agnostic)
 src/api/         ← trace, tracify, embody, embodify + validate-steps, validate-tracer-module
 src/tracing.ts   ← tracing() sugar (validates TracerModule, returns pre-bound wrappers)

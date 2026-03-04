@@ -6,8 +6,8 @@ Four API wrappers for the 2x2 matrix. See [DOCS.md](./DOCS.md) for architecture 
 
 |            | Simple (positional/keyed args) | Chainable (builder pattern) |
 | ---------- | ------------------------------ | --------------------------- |
-| **Throws** | `trace`                        | `tracify`                   |
-| **Safe**   | `embody`                       | `embodify`                  |
+| **Throws** | `trace`                        | `embody`                    |
+| **Safe**   | `tracify`                      | `embodify`                  |
 
 **Throws** = error propagates as exception. **Safe** = error returned as `{ ok: false, error }`.
 
@@ -29,10 +29,10 @@ const { trace, tracify, embody, embodify } = tracing(myTracer);
 const steps = await trace(code, config);
 
 // Chainable throws — build up then await .steps
-const steps = await tracify.code(code).config(config).steps;
+const steps = await embody.code(code).config(config).steps;
 
 // Safe keyed — returns { ok, steps } or { ok, error }
-const result = await embody({ code, config });
+const result = await tracify({ code, config });
 if (result.ok) console.log(result.steps);
 
 // Safe chainable — .set() is sync, .trace() is async
@@ -45,10 +45,10 @@ if (chain.ok) console.log(chain.steps);
 | Need                                     | Use        | Why                                          |
 | ---------------------------------------- | ---------- | -------------------------------------------- |
 | Quick script, errors can propagate       | `trace`    | Simplest, positional args                    |
-| Build config gradually, throw on error   | `tracify`  | Chainable, memoized `.steps`                 |
-| Production code, explicit error handling | `embody`   | `{ ok, error }`, smart partial application   |
+| Build config gradually, throw on error   | `embody`   | Chainable, memoized `.steps`                 |
+| Production code, explicit error handling | `tracify`  | `{ ok, error }`, smart partial application   |
 | Error recovery, re-trace after failure   | `embodify` | `.set()` returns new chain, `.trace()` again |
-| Partial application — reuse same code    | `embody`   | Closure caches provided fields               |
+| Partial application — reuse same code    | `tracify`  | Closure caches provided fields               |
 | Inspect state before tracing             | `embodify` | Lazy `.resolvedConfig`, sync getters         |
 
 ## Pipeline
@@ -79,12 +79,12 @@ Tracer output is validated and frozen before consumers receive it.
 ```text
 src/api/
   trace.ts                  # Positional, throws: trace(code, config?) → Promise<StepCore[]>
-  tracify.ts                # Chainable throws: .code().config().steps
-  embody.ts                 # Keyed, safe: { code, config } → Promise<EmbodyResult>
+  tracify.ts                # Keyed, safe: tracify({ tracer, code, config }) → Promise<TracifyResult>
+  embody.ts                 # Chainable throws: .tracer().code().config().steps
   embodify.ts               # Chainable safe: .set().trace() → Promise<EmbodifyChain>
   validate-tracer-module.ts # API input guard — validates TracerModule, throws TracerInvalidError
   validate-steps.ts         # API output guard — validates record() output, throws StepsInvalidError
-  types.ts                  # Wrapper-specific types: EmbodyResult, TracifyChain, EmbodifyChain, etc.
+  types.ts                  # Wrapper-specific types: TracifyResult, EmbodyChain, EmbodifyChain, etc.
   tests/
     trace.test.ts
     tracify.test.ts

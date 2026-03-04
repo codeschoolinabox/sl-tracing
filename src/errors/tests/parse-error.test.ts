@@ -1,4 +1,4 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import ParseError from '../parse-error.js';
 
 describe('ParseError', () => {
@@ -8,9 +8,9 @@ describe('ParseError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new ParseError('Unexpected token', { line: 1, column: 5 });
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of ParseError', () => {
@@ -20,9 +20,9 @@ describe('ParseError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) ParseError"', () => {
+    it('has name set to "(TracingError) ParseError"', () => {
       const error = new ParseError('Unexpected token', { line: 1, column: 5 });
-      expect(error.name).toBe('(EmbodyError) ParseError');
+      expect(error.name).toBe('(TracingError) ParseError');
     });
 
     it('stores the provided message', () => {

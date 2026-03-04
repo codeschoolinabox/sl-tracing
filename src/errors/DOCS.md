@@ -7,10 +7,10 @@ For error class interfaces and usage examples, see TSDoc in each source file.
 
 ## Why a Base Class?
 
-`EmbodyError` exists purely as a marker for `instanceof` catch-all:
+`TracingError` exists purely as a marker for `instanceof` catch-all:
 
 ```typescript
-if (error instanceof EmbodyError) {
+if (error instanceof TracingError) {
   // Any tracing error — handle gracefully
 } else {
   throw error; // Not our error — propagate
@@ -20,7 +20,7 @@ if (error instanceof EmbodyError) {
 Without it, consumers must list every error class in their catch. The base class makes
 the distinction trivial and robust against new error classes being added.
 
-`EmbodyError` is never thrown directly — only subclasses are.
+`TracingError` is never thrown directly — only subclasses are.
 
 ---
 

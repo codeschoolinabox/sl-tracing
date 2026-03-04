@@ -4,7 +4,7 @@
  * Thrown when options pass schema validation but violate cross-field constraints.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown when options violate semantic constraints.
@@ -23,8 +23,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class OptionsSemanticInvalidError extends EmbodyError {
-  override readonly name = '(EmbodyError) OptionsSemanticInvalidError' as const;
+class OptionsSemanticInvalidError extends TracingError {
+  override readonly name = '(TracingError) OptionsSemanticInvalidError' as const;
 
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);

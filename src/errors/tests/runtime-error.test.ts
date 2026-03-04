@@ -1,4 +1,4 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import RuntimeError from '../runtime-error.js';
 
 describe('RuntimeError', () => {
@@ -8,9 +8,9 @@ describe('RuntimeError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new RuntimeError('undefined is not a function');
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of RuntimeError', () => {
@@ -20,9 +20,9 @@ describe('RuntimeError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) RuntimeError"', () => {
+    it('has name set to "(TracingError) RuntimeError"', () => {
       const error = new RuntimeError('undefined is not a function');
-      expect(error.name).toBe('(EmbodyError) RuntimeError');
+      expect(error.name).toBe('(TracingError) RuntimeError');
     });
 
     it('stores the provided message', () => {

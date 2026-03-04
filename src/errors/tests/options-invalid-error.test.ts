@@ -1,4 +1,4 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import OptionsInvalidError from '../options-invalid-error.js';
 
 describe('OptionsInvalidError', () => {
@@ -8,9 +8,9 @@ describe('OptionsInvalidError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new OptionsInvalidError('direction must be string');
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of OptionsInvalidError', () => {
@@ -20,9 +20,9 @@ describe('OptionsInvalidError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) OptionsInvalidError"', () => {
+    it('has name set to "(TracingError) OptionsInvalidError"', () => {
       const error = new OptionsInvalidError('direction must be string');
-      expect(error.name).toBe('(EmbodyError) OptionsInvalidError');
+      expect(error.name).toBe('(TracingError) OptionsInvalidError');
     });
 
     it('stores the provided message', () => {

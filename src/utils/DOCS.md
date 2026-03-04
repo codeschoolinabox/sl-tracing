@@ -28,7 +28,7 @@ Use when you constructed the object yourself in this scope.
 - Freezes the same reference in place (no clone)
 - Returns the same reference — identity is preserved
 - Safe on objects containing functions
-- **Never call on chain objects.** `EmbodifyChain` and `TracifyChain` have getters with
+- **Never call on chain objects.** `EmbodifyChain` and `EmbodyChain` have getters with
   side effects. Recursive traversal via `Object.values()` triggers those getters, which
   throw when required state (tracer, code) is missing.
 
@@ -42,10 +42,10 @@ export default deepFreezeInPlace({ id, langs, record, optionsSchema, verifyOptio
 
 ### Shallow `Object.freeze` — For Chain Objects
 
-`TracifyChain` and `EmbodifyChain` wrappers use `Object.freeze` (shallow only):
+`EmbodyChain` and `EmbodifyChain` wrappers use `Object.freeze` (shallow only):
 
 ```typescript
-// tracing.ts — shallow only (tracify/embodify chains are inside)
+// tracing.ts — shallow only (embody/embodify chains are inside)
 return Object.freeze({ trace, tracify, embody, embodify });
 
 // chain factory — shallow only (stored values already individually frozen)
@@ -58,8 +58,8 @@ return Object.freeze({ tracer, code, config, steps, resolvedConfig, ok, error, .
 | -------------------- | -------------------------------------- | ------------------------- | -------------------------------------- |
 | All 4 wrappers       | Steps from `tracer.record()`           | `deepFreeze`              | Tracer owns them                       |
 | All 4 wrappers       | `resolvedConfig = { meta, options }`   | `deepFreezeInPlace`       | Fresh from `prepareConfig()`           |
-| `embody.ts`          | User config on entry                   | `deepFreeze`              | User owns it                           |
-| `embody.ts`          | `EmbodyResult` wrapper                 | `deepFreezeInPlace`       | We just constructed it                 |
+| `tracify.ts`         | User config on entry                   | `deepFreeze`              | User owns it                           |
+| `tracify.ts`         | `TracifyResult` wrapper                | `deepFreezeInPlace`       | We just constructed it                 |
 | `embodify.ts`        | User config stored internally          | `deepFreeze`              | User owns it                           |
 | `tracing.ts`         | `{ trace, tracify, embody, embodify }` | `Object.freeze` (shallow) | Chains inside have getter side effects |
 | `txt-chars/index.ts` | TracerModule fixture                   | `deepFreezeInPlace`       | We assembled it locally                |

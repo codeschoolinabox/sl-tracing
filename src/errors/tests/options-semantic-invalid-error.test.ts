@@ -1,4 +1,4 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import OptionsSemanticInvalidError from '../options-semantic-invalid-error.js';
 
 describe('OptionsSemanticInvalidError', () => {
@@ -8,9 +8,9 @@ describe('OptionsSemanticInvalidError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new OptionsSemanticInvalidError('constraint violated');
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of OptionsSemanticInvalidError', () => {
@@ -20,9 +20,9 @@ describe('OptionsSemanticInvalidError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) OptionsSemanticInvalidError"', () => {
+    it('has name set to "(TracingError) OptionsSemanticInvalidError"', () => {
       const error = new OptionsSemanticInvalidError('constraint violated');
-      expect(error.name).toBe('(EmbodyError) OptionsSemanticInvalidError');
+      expect(error.name).toBe('(TracingError) OptionsSemanticInvalidError');
     });
 
     it('stores the provided message', () => {

@@ -6,7 +6,7 @@
  * implementation, not a problem with user input.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown when tracer output does not satisfy the `StepCore` contract.
@@ -34,8 +34,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class StepsInvalidError extends EmbodyError {
-  override readonly name = '(EmbodyError) StepsInvalidError' as const;
+class StepsInvalidError extends TracingError {
+  override readonly name = '(TracingError) StepsInvalidError' as const;
   readonly violations: readonly string[];
 
   constructor(violations: readonly string[], options?: ErrorOptions) {

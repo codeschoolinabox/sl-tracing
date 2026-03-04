@@ -1,18 +1,18 @@
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 import TracerInvalidError from '../tracer-invalid-error.js';
 
 describe('TracerInvalidError', () => {
   describe('construction', () => {
-    it('extends EmbodyError', () => {
+    it('extends TracingError', () => {
       const error = new TracerInvalidError(['some violation']);
 
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('sets name', () => {
       const error = new TracerInvalidError(['some violation']);
 
-      expect(error.name).toBe('(EmbodyError) TracerInvalidError');
+      expect(error.name).toBe('(TracingError) TracerInvalidError');
     });
 
     it('stores violations array', () => {

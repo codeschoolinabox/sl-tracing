@@ -4,7 +4,7 @@
  * Thrown when execution exceeds configured limits (steps, time, iterations).
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown when execution exceeds configured limits.
@@ -21,8 +21,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class LimitExceededError extends EmbodyError {
-  override readonly name = '(EmbodyError) LimitExceededError' as const;
+class LimitExceededError extends TracingError {
+  override readonly name = '(TracingError) LimitExceededError' as const;
   readonly limit: string;
   readonly actual: number;
 

@@ -4,7 +4,7 @@
  * Thrown when user-provided options (or meta) don't match the JSON Schema.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown when options or meta don't match the JSON Schema.
@@ -20,8 +20,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class OptionsInvalidError extends EmbodyError {
-  override readonly name = '(EmbodyError) OptionsInvalidError' as const;
+class OptionsInvalidError extends TracingError {
+  override readonly name = '(TracingError) OptionsInvalidError' as const;
   readonly path: string | undefined;
 
   constructor(message: string, path?: string, options?: ErrorOptions) {

@@ -4,7 +4,7 @@
  * Thrown when required function arguments have wrong type or value.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown when required function arguments have wrong type or value.
@@ -20,8 +20,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class ArgumentInvalidError extends EmbodyError {
-  override readonly name = '(EmbodyError) ArgumentInvalidError' as const;
+class ArgumentInvalidError extends TracingError {
+  override readonly name = '(TracingError) ArgumentInvalidError' as const;
   readonly field: string;
 
   constructor(field: string, message: string, options?: ErrorOptions) {

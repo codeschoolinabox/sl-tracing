@@ -1,13 +1,13 @@
 # errors/
 
 Typed error classes for `@study-lenses/tracing`. Enables both catch-all handling
-(`instanceof EmbodyError`) and specific handling (`instanceof ParseError`).
+(`instanceof TracingError`) and specific handling (`instanceof ParseError`).
 
 ## Error Hierarchy
 
 ```text
 Error (built-in)
-  └── EmbodyError (marker class — never thrown directly)
+  └── TracingError (marker class — never thrown directly)
         ├── TracerInvalidError           (tracing() — aggregate: violations[])
         ├── ArgumentInvalidError         (API layer — wrong arg types)
         ├── OptionsInvalidError          (/configuring — schema mismatch)
@@ -36,12 +36,12 @@ Error (built-in)
 ## Quick Start
 
 ```typescript
-import { EmbodyError, ParseError } from '@study-lenses/tracing';
+import { TracingError, ParseError } from '@study-lenses/tracing';
 
 try {
   const steps = await trace(code, config);
 } catch (error) {
-  if (error instanceof EmbodyError) {
+  if (error instanceof TracingError) {
     showUserError(error.message);
     if (error instanceof ParseError) {
       highlightLine(error.loc.line, error.loc.column);
@@ -65,7 +65,7 @@ src/errors/
   README.md                          # This file
   DOCS.md                            # Architecture rationale
   types.ts                           # Shared types (SourceLoc)
-  embody-error.ts                    # Base class (marker only)
+  tracing-error.ts                   # Base class (marker only)
   tracer-invalid-error.ts            # tracing(): aggregate TracerModule violations
   argument-invalid-error.ts          # API: argument type/value invalid
   options-invalid-error.ts           # /configuring: schema mismatch

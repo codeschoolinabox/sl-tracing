@@ -5,7 +5,7 @@
  * Includes source location (line and column) where parsing failed.
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 import type { SourceLoc } from './types.js';
 
 /**
@@ -25,8 +25,8 @@ import type { SourceLoc } from './types.js';
  * }
  * ```
  */
-class ParseError extends EmbodyError {
-  override readonly name = '(EmbodyError) ParseError' as const;
+class ParseError extends TracingError {
+  override readonly name = '(TracingError) ParseError' as const;
   readonly loc: SourceLoc;
 
   constructor(message: string, loc: SourceLoc, options?: ErrorOptions) {

@@ -1,5 +1,5 @@
 import ArgumentInvalidError from '../argument-invalid-error.js';
-import EmbodyError from '../embody-error.js';
+import TracingError from '../tracing-error.js';
 
 describe('ArgumentInvalidError', () => {
   describe('inheritance', () => {
@@ -8,9 +8,9 @@ describe('ArgumentInvalidError', () => {
       expect(error).toBeInstanceOf(Error);
     });
 
-    it('is an instance of EmbodyError', () => {
+    it('is an instance of TracingError', () => {
       const error = new ArgumentInvalidError('tracer', 'Expected string');
-      expect(error).toBeInstanceOf(EmbodyError);
+      expect(error).toBeInstanceOf(TracingError);
     });
 
     it('is an instance of ArgumentInvalidError', () => {
@@ -20,9 +20,9 @@ describe('ArgumentInvalidError', () => {
   });
 
   describe('properties', () => {
-    it('has name set to "(EmbodyError) ArgumentInvalidError"', () => {
+    it('has name set to "(TracingError) ArgumentInvalidError"', () => {
       const error = new ArgumentInvalidError('tracer', 'Expected string');
-      expect(error.name).toBe('(EmbodyError) ArgumentInvalidError');
+      expect(error.name).toBe('(TracingError) ArgumentInvalidError');
     });
 
     it('stores the provided message', () => {

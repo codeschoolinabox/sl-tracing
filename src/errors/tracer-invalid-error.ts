@@ -5,7 +5,7 @@
  * Replaces TracerUnknownError (which assumed a registry).
  */
 
-import EmbodyError from './embody-error.js';
+import TracingError from './tracing-error.js';
 
 /**
  * Thrown when a value does not satisfy the `TracerModule` contract.
@@ -15,7 +15,7 @@ import EmbodyError from './embody-error.js';
  *
  * @remarks
  * Thrown by `validateTracerModule()` and thus by every API entry point
- * (`tracing()`, `trace()`, `tracify.tracer()`, `embody()`, `embodify()`).
+ * (`tracing()`, `trace()`, `embody.tracer()`, `tracify()`, `embodify()`).
  *
  * @example
  * ```typescript
@@ -28,8 +28,8 @@ import EmbodyError from './embody-error.js';
  * }
  * ```
  */
-class TracerInvalidError extends EmbodyError {
-  override readonly name = '(EmbodyError) TracerInvalidError' as const;
+class TracerInvalidError extends TracingError {
+  override readonly name = '(TracingError) TracerInvalidError' as const;
   readonly violations: readonly string[];
 
   constructor(violations: readonly string[], options?: ErrorOptions) {

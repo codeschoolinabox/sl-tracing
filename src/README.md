@@ -16,7 +16,7 @@ Source files for `@study-lenses/tracing`.
 | ----------------------------------------- | ----------------------------------------------------------------------------- |
 | [`api/`](./api/README.md)                 | Four API wrappers: `trace`, `tracify`, `embody`, `embodify`                   |
 | [`configuring/`](./configuring/README.md) | Pure config pipeline: shorthand expansion, default-filling, schema validation |
-| [`errors/`](./errors/README.md)           | `EmbodyError` base class + all specific error classes                         |
+| [`errors/`](./errors/README.md)           | `TracingError` base class + all specific error classes                        |
 | [`utils/`](./utils/README.md)             | Deep object utilities: clone, freeze, freeze-in-place, merge, equal           |
 | `tests/`                                  | Integration tests for `tracing.ts`                                            |
 
